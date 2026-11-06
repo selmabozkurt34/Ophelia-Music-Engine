@@ -88,6 +88,7 @@ ophelia/
 ```
 
 Yol haritasının tamamı ve aşama durumları: [docs/ROADMAP.md](docs/ROADMAP.md).
+Piyasa karşılaştırması ve konum analizi: [docs/piyasa_analizi.md](docs/piyasa_analizi.md).
 
 ## Yapılandırma
 
