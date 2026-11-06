@@ -35,6 +35,12 @@ from ophelia.nlp.arrange import (
 from ophelia.nlp.parse import parse_command
 from ophelia.nlp.seeding import seed_notes
 from ophelia.nlp.spec import CompositionSpec
+from ophelia.notation.musicxml import (
+    DEFAULT_TITLE,
+    XmlPart,
+    parts_from_arrangement,
+    write_musicxml,
+)
 
 # Veri setinden ölçülen token yoğunluğu: 393.839 token / 16.416 sn ≈ 24 token/sn.
 TOKENS_PER_SECOND = 24.0
@@ -53,6 +59,7 @@ class ComposeResult:
     adjust: AdjustReport = field(default_factory=AdjustReport)
     midi_path: Path | None = None
     wav_path: Path | None = None
+    xml_path: Path | None = None
     stats: MidiStats | None = None
     final_key: object | None = None
     parts: list[Part] = field(default_factory=list)
@@ -132,6 +139,7 @@ def compose(
     *,
     out_path: str | Path | None = None,
     wav_path: str | Path | None = None,
+    xml_path: str | Path | None = None,
     seed: int | None = None,
     temperature: float = 0.95,
     top_k: int = 40,
@@ -204,6 +212,19 @@ def compose(
 
     if wav_path is not None and result.parts:
         result.wav_path = Path(render_file(result.parts, str(wav_path), tempo_bpm=request.tempo_bpm))
+
+    # Nota düzenlemesi: düzenlenmiş partiler varsa seslendirilen hâli yazılır,
+    # yoksa tek partili (model çıktısı) nota kâğıdı.
+    if xml_path is not None:
+        xml_parts = parts_from_arrangement(result.parts) or [XmlPart("Ophelia", list(final))]
+        result.xml_path = Path(
+            write_musicxml(
+                xml_parts,
+                xml_path,
+                title=command.strip()[:80] or DEFAULT_TITLE,
+                tempo_bpm=request.tempo_bpm,
+            )
+        )
 
     return result
 

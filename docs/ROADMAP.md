@@ -100,6 +100,7 @@ Ayrıntılar: [06_nlp.md](06_nlp.md).
 - [x] **165 nota → 4 ses (56/30/41/38) · 4 program · 4 kanal · 30,4 sn stereo WAV**, 31 yeni test
 - [x] Rol modu: 121 nota → 42/41/38, MIDI program 40/41/33, 20,4 sn stereo WAV
 - [x] Perküsyon rolü açık hatayla reddedilir (davul kalıbı 8. aşamada)
+- [x] MusicXML dışa aktarımı (piyasa raporunun P0'ı): akor, çok ses, bağ, anahtar imi — 14 test
 
 Ayrıntılar: [07_audio.md](07_audio.md).
 

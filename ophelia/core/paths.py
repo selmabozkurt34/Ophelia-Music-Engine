@@ -28,6 +28,8 @@ TOKENS_DIR: Path = DATA_DIR / "tokens"
 # Çıktı türleri (7-9. aşamalar)
 MIDI_OUT_DIR: Path = OUTPUTS_DIR / "midi"
 WAV_OUT_DIR: Path = OUTPUTS_DIR / "wav"
+# Notasyon çıktısı: MusicXML dosyaları (düzenlenebilir nota).
+SCORE_OUT_DIR: Path = OUTPUTS_DIR / "scores"
 
 DEFAULT_CONFIG_FILE: Path = CONFIG_DIR / "default.yaml"
 
@@ -45,6 +47,7 @@ def ensure_dirs() -> None:
         MODELS_DIR,
         MIDI_OUT_DIR,
         WAV_OUT_DIR,
+        SCORE_OUT_DIR,
         LOGS_DIR,
     ):
         directory.mkdir(parents=True, exist_ok=True)

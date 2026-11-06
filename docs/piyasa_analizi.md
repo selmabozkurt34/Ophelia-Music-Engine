@@ -72,7 +72,7 @@ ama pazarın en kalabalık ve en riskli kısmında değil, savunulabilir bir ni�
 | Vokal | ❌ | yok |
 | Stil çeşitliliği | ❌ | tek stil (Bach koralı); "caz/elektronik" isteği çözümlenir, üretim değişmez |
 | Uzun vadeli form | ❌ | 256 token bağlam ≈ 85 nota; eser düzeyinde tema gelişimi yok |
-| Nota (MusicXML) çıktısı | ❌ | yok — bkz. §6, en ucuz yüksek kaldıraçlı adım |
+| Nota (MusicXML) çıktısı | ✅ | `ophelia notation export` — MuseScore/Dorico'da açılabilen .musicxml (§8) |
 
 **Dürüst cümle:** teknik prototip olarak "çalışıyor" iddiası savunulabilir; ürün
 olarak "rekabet eder" iddiası savunulamaz. Aradaki fark model kalitesi değil,
@@ -228,8 +228,9 @@ Education ve Noteflight Learn tam olarak bu modelle (öğrenci başına yıllık
    lisansları. Bizim maliyet yapımız (CPU'da 15 dk eğitim, sıfır API maliyeti)
    bu banda rahat oturuyor; Suno gibi GPU maliyeti yok.
 3. **Format uyumu giriş bileti.** MusicXML/MIDI olmadan hiçbir notasyon aracına
-   entegre olamayız. Şu an MIDI var, MusicXML yok — bu, listedeki en ucuz ve en
-   yüksek kaldıraçlı eksik.
+   entegre olamayız. MIDI zaten vardı; MusicXML dışa aktarımı bu raporun
+   yazılmasından sonra eklendi (`ophelia notation export`), yani giriş bileti
+   artık elimizde.
 
 ---
 
@@ -283,7 +284,7 @@ Education ve Noteflight Learn tam olarak bu modelle (öğrenci başına yıllık
 | | |
 | --- | --- |
 | **Güçlü** | temiz lisans · Türkçe arayüz · deterministik kontrol · düzenlenebilir çıktı · CPU'da çalışma · test disiplini |
-| **Zayıf** | veri 4,56 saat · 0,94 M parametre · ses timbre zayıf · vokal yok · tek stil · MusicXML yok · kör A/B testi yok |
+| **Zayıf** | veri 4,56 saat · 0,94 M parametre · ses timbre zayıf · vokal yok · tek stil · kör A/B testi yok |
 | **Fırsat** | lisans krizi sonrası "temiz" talebi · eğitim kanalı (710 bin kursiyer) · notasyonda üretken AI boşluğu · Türk makamı · DAW/notasyon eklentisi |
 | **Tehdit** | MuseScore/Sibelius üretken AI'ı kendi ekler · Suno lisanslı modelle hukuku çözer · açık modeller (ACE-Step MIT) hızla ucuzlar · tek kişilik ekip kapasitesi |
 
@@ -304,7 +305,8 @@ düzenlenebilir beste üreten; hangi veriyle eğitildiği belgelenmiş motor.*
 
 Bu cümlenin üç ayağı var ve üçü de mevcut kodun üstüne oturuyor:
 
-1. **Notasyon entegrasyonu** — MusicXML dışa aktarım + MuseScore/Dorico'ya
+1. **Notasyon entegrasyonu** — MusicXML dışa aktarım (**yapıldı:**
+   `ophelia notation export` / `compose --musicxml`) + MuseScore/Dorico'ya
    aktarılabilir çıktı. Rakip değil, eklenti olarak girilir; dağıtım hazır.
 2. **Eğitim** — Türkçe arayüz, öğretmenin "30 saniyelik la minör 4 sesli örnek
    üret" diyebildiği, çıktının nota olarak açılabildiği bir araç. B2B/G2B lisans
@@ -317,7 +319,7 @@ Bu cümlenin üç ayağı var ve üçü de mevcut kodun üstüne oturuyor:
 
 | Öncelik | Adım | Gerekçe | Ölçüt |
 | --- | --- | --- | --- |
-| **P0** | MusicXML dışa aktarım | notasyon pazarına giriş bileti; en ucuz kaldıraç | MuseScore'da açılıp çalınabilen .musicxml |
+| **P0** | ~~MusicXML dışa aktarım~~ **(yapıldı)** | notasyon pazarına giriş bileti; en ucuz kaldıraç | MuseScore'da açılıp çalınabilen .musicxml |
 | **P0** | Kör A/B testi (gerçek koral vs üretim, 20+ dinleyici) | hiç ölçmediğimiz tek kritik boyut | tercih oranı + güven aralığı |
 | **P1** | 8. aşama: SoundFont + LUFS + reverb/kompresör | "dinlenebilir"den "sunulabilir"e | −14 LUFS, true peak ≤ −1 dBTP |
 | **P1** | PDMX `no_license_conflict` (6.250 saat) | veri farkını 1.370×'e indirir; lisans temiz kalır | yeni stil çeşitliliği + val kaybı |

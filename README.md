@@ -5,8 +5,9 @@ enstrümanlara dağıtan, düzenlenebilir hâle getiren ve profesyonel ses dosya
 dönüştüren bağımsız bir yapay zekâ müzik motoru.
 
 > **Durum:** 1-7. aşamalar tamamlandı. Model beste üretiyor, doğal dille
-yönlendirilebiliyor, enstrümanlara dağıtılıp stereo WAV'a basılabiliyor.
-> Sırada 8. aşama (mixing / mastering).
+yönlendirilebiliyor, enstrümanlara dağıtılıp stereo WAV'a basılabiliyor ve çıktı
+> **nota olarak (MusicXML)** dışa aktarılabiliyor. Sırada 8. aşama (mixing /
+mastering).
 
 ## Hızlı başlangıç
 
@@ -83,6 +84,7 @@ ophelia/
 ├── model/    # beste modeli, eğitim, dilbilgisi kısıtlı üretim (hazır)
 ├── nlp/      # doğal dil → parametre → model (hazır)
 ├── audio/    # enstrüman dağıtımı + sentez + stereo miks (hazır)
+├── notation/ # MusicXML dışa aktarımı — düzenlenebilir nota (hazır)
 ├── ui/       # 9. aşama — kullanıcı arayüzü
 └── cli/      # komut satırı arayüzü
 ```
@@ -214,4 +216,26 @@ ophelia audio instruments          # katalog: rol, GM program, ses aralığı
 | Nota korunumu | 165 → 165 (bölge ayırma kayıpsız) · rol modunda 70 → 24/24/22 |
 | WAV | 44 100 Hz · stereo · 16-bit · tepe −1 dBFS |
 
-Ayrıntı (ses ayırma, sentez zinciri, bulunan hatalar): [docs/07_audio.md](docs/07_audio.md).
+Ayrıntı (ses ayırma, sentez zinciri, bulunan hatalar): [docs/07_audio.md](docs/07_audio.md)
+
+## Notasyon: MusicXML çıktısı
+
+MIDI dinlenebilir ama **düzenlenebilir nota** değil. Aynı eser MusicXML olarak da
+yazılıyor; MuseScore, Dorico, Sibelius ve Finale bu biçimi doğrudan açıyor.
+
+```bash
+ophelia compose "hüzünlü la minör, yavaş, 25 saniye, yaylılar" --musicxml
+ophelia notation export outputs/midi/eser.mid -o outputs/scores/eser.musicxml
+ophelia notation export eser.mid --title "Deneme 1"
+```
+
+| Ölçüt | Değer |
+| --- | --- |
+| Biçim | MusicXML 4.0 · partwise · UTF-8 |
+| Ölçüleme | 4/4 varsayılan; ölçü çizgisini aşan nota bağla bölünür, boşluklar susla dolar |
+| Çokseslilik | eşzamanlı notalar `<chord/>`, üst üste binen sesler ayrı `<voice>` + `<backup>` |
+| Anahtar imi | notalardan tahmin (Krumhansl-Kessler → `<fifths>`), sol/sa anahtarı ses ortalamasına göre |
+| Sadakat | geri okunduğunda perde · başlangıç · süre **birebir** (bağlar çözülerek doğrulandı) |
+| Sınır | nota başına velocity taşınamaz; ortalama velocity tek `<sound dynamics>` olarak yazılır |
+
+Gerekçe ve notasyon pazarı: [docs/piyasa_analizi.md](docs/piyasa_analizi.md)..

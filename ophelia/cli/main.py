@@ -670,6 +670,61 @@ def audio_render(
     console.print(f"  çıktı            : {target}")
 
 
+notation_app = typer.Typer(
+    no_args_is_help=True, help="Notasyon: MusicXML dışa aktarımı (düzenlenebilir nota)."
+)
+app.add_typer(notation_app, name="notation")
+
+
+@notation_app.command("export")
+def notation_export(
+    midi: Annotated[Path, typer.Argument(help="MIDI dosyası (tek ya da çok kanallı)")],
+    out: Annotated[Path | None, typer.Option("--out", "-o")] = None,
+    title: Annotated[str | None, typer.Option("--title", "-t")] = None,
+) -> None:
+    """MIDI'yi MusicXML'e çevirir; MuseScore/Dorico/Sibelius'ta açılabilir."""
+    import mido
+
+    from ophelia.core.paths import SCORE_OUT_DIR
+    from ophelia.data.midi_io import MidiError
+    from ophelia.notation import detect_fifths, parts_from_midi, write_musicxml
+
+    if not midi.is_file():
+        console.print(f"[red]MIDI yok:[/red] {midi}")
+        raise typer.Exit(code=1)
+
+    tempo = 100.0
+    for track in mido.MidiFile(str(midi)).tracks:
+        for message in track:
+            if message.type == "set_tempo":
+                tempo = 60_000_000 / message.tempo
+                break
+
+    target = out or (SCORE_OUT_DIR / f"{midi.stem}.musicxml")
+    try:
+        parts = parts_from_midi(midi)
+        path = write_musicxml(
+            parts,
+            target,
+            tempo_bpm=tempo,
+            **(({"title": title}) if title else {}),
+        )
+    except (MidiError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    fifths = detect_fifths(parts)
+    console.rule("[bold]Nota[/bold]")
+    for part in parts:
+        console.print(
+            f"  • {part.name:<18} kanal {part.channel} · GM {part.program} · "
+            f"{len(part.notes)} nota"
+        )
+    console.print(f"  tempo            : {tempo:.0f} BPM")
+    console.print(f"  anahtar imi     : fifths {fifths:+d}")
+    console.print(f"  çıktı            : {path}")
+
+
 @app.command("compose")
 def compose_command(
     command: Annotated[str, typer.Argument(help="Doğal dil isteği, örn. 'hüzünlü la minör 30 sn'")],
@@ -681,6 +736,9 @@ def compose_command(
     ensemble: Annotated[str | None, typer.Option("--ensemble", "-e")] = None,
     roles: Annotated[str | None, typer.Option("--roles", "-r", help="Rol tabanlı düzenleme: melodi,bas")] = None,
     wav: Annotated[bool, typer.Option("--wav/--no-wav")] = False,
+    musicxml: Annotated[
+        bool, typer.Option("--musicxml/--no-musicxml", help="Yanına .musicxml (nota) yaz")
+    ] = False,
 ) -> None:
     """Doğal dil komutundan eser üretir: komut → parametre → model → MIDI/WAV."""
     from ophelia.core.paths import MIDI_OUT_DIR, MODELS_DIR
@@ -730,6 +788,7 @@ def compose_command(
         tokenizer,
         out_path=target,
         wav_path=wav_path,
+        xml_path=target.with_suffix(".musicxml") if musicxml else None,
         seed=seed,
         temperature=temperature,
         spec=request,
@@ -761,6 +820,8 @@ def compose_command(
     console.print(f"  çıktı            : {target}")
     if result.wav_path:
         console.print(f"  ses              : {result.wav_path}")
+    if result.xml_path:
+        console.print(f"  nota (MusicXML)  : {result.xml_path}")
 
 
 if __name__ == "__main__":  # pragma: no cover
