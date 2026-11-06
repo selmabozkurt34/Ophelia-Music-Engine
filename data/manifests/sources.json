@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-11-04T18:58:06Z",
+  "sources": [
+    {
+      "slug": "music21-bach-chorales",
+      "name": "Bach Chorales (music21 corpus)",
+      "license_id": "PD",
+      "url": "https://github.com/cuthbertLab/music21",
+      "attribution": "Bach Chorales (music21 corpus) (atıf gerekmiyor)",
+      "retrieved_at": "2026-11-04T18:39:43Z",
+      "file_count": 427,
+      "notes": "Kodlamanın kendisi için ayrı bir lisans dosyası yok; kamu malı statüsü eserin yaşına dayanıyor.; Tek stil (4 sesli korale); çeşitlilik için başka kaynak gerekir."
+    }
+  ]
+}

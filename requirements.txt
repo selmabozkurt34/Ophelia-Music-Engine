@@ -1,0 +1,26 @@
+# Ophelia Music Engine — çalışma zamanı bağımlılıkları (Python 3.11)
+# Kurulum:  pip install -r requirements.txt
+# NOT: torch, CUDA'sız makinede CPU indeksinden ayrıca kurulur:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# --- Sayısal temel ----------------------------------------------------------
+numpy>=1.26,<3.0
+scipy>=1.11,<2.0
+pandas>=2.1,<3.0
+
+# --- Derin öğrenme ----------------------------------------------------------
+torch>=2.2,<3.0
+
+# --- MIDI okuma / yazma -----------------------------------------------------
+mido>=1.3,<2.0
+pretty_midi>=0.2.10
+music21>=9.1,<10.0
+
+# --- Ses I/O ----------------------------------------------------------------
+soundfile>=0.12,<1.0
+
+# --- Yapılandırma ve komut satırı ------------------------------------------
+PyYAML>=6.0,<7.0
+typer>=0.12,<1.0
+rich>=13.7,<15.0
+tqdm>=4.66,<5.0

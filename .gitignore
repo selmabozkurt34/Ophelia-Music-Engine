@@ -1,0 +1,51 @@
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# --- Araç önbellekleri ----------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Veri (telif/lisans nedeniyle depoda tutulmaz) ------------------------
+data/raw/*
+data/interim/*
+data/processed/*
+data/splits/*
+!data/**/.gitkeep
+# Dosya bazlı köken defteri (224 KB+, boru hattı yeniden üretir);
+# lisans kaydı olan sources.json ise sürüm kontrolünde tutulur.
+data/manifests/files.jsonl
+# Token dizileri (numpy) ve sözlük — boru hattı yeniden üretir
+data/tokens/*
+!data/tokens/.gitkeep
+# Üretilen MIDI'ler (model ağırlıkları da depoda değil; yeniden üretilir)
+data/midi/out/*
+!data/midi/out/.gitkeep
+
+# --- Model ağırlıkları ve çıktılar ---------------------------------------
+models/*
+!models/.gitkeep
+outputs/**/*
+!outputs/**/.gitkeep
+
+# --- Ses fontları ve geçici dosyalar -------------------------------------
+assets/soundfonts/*.sf2
+assets/soundfonts/*.sf3
+logs/*.log
+
+# --- Araç dizinleri -------------------------------------------------------
+.freebuff/
+
+# --- Editör / işletim sistemi --------------------------------------------
+.vscode/*.log
+.idea/
+.DS_Store
+Thumbs.db

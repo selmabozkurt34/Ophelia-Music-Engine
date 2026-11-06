@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ophelia-music-engine"
+version = "0.1.0"
+description = "Doğal dil komutlarından özgün müzik besteleyen yapay zekâ motoru"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Ophelia" }]
+
+[project.scripts]
+ophelia = "ophelia.cli.main:app"
+
+[tool.setuptools.packages.find]
+include = ["ophelia*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["ophelia", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]

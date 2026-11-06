@@ -1,0 +1,21 @@
+# Ophelia Music Engine — varsayılan yapılandırma
+# Bu dosyadaki değerler tüm alt sistemler için başlangıç noktasıdır.
+# Deneyler için configs/ altında kopyalayıp değiştirin (örn. configs/deney_01.yaml).
+
+project:
+  name: "Ophelia Music Engine"
+  version: "0.1.0"
+  seed: 42
+
+midi:
+  ticks_per_beat: 480          # MIDI çözünürlüğü
+  tempo_bpm: 100               # varsayılan tempo (6. aşamada komutla değişir)
+  time_signature: [4, 4]       # ölçü
+  key: "C major"               # varsayılan tonalite
+  velocity_min: 40             # ifade aralığı
+  velocity_max: 110
+
+audio:
+  sample_rate: 44100           # 7-8. aşama ses üretimi
+  bit_depth: 16
+  channels: 2
