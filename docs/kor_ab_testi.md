@@ -114,6 +114,24 @@ düzeltme). Farklı sürümlerle kurulmuş oturumların oyları birleştirilmeme
 | `abtest/tur-2` | 8. aşama sesi, ritim kısıtsız — arşiv |
 | `abtest/tur-3` | **güncel**: salon + −14 LUFS + 8'lik ritim kısıtı |
 
+### Sonuçları nerede görürüm
+
+Üç yol var, hepsi aynı sayıları gösterir:
+
+| Nerede | Ne zaman | Adres / komut |
+| --- | --- | --- |
+| Canlı sayfa (15 sn'de bir kendini yeniler) | test sürerken | `http://127.0.0.1:8823/rapor` |
+| HTML dosyası (yazdırılabilir, paylaşılabilir) | tur bitince | `ophelia abtest rapor --dir outputs/abtest/tur-3` |
+| JSON | betik/arşiv | `http://127.0.0.1:8823/rapor.json` · `abtest score --json …` |
+
+Canlı sayfa **yalnızca sunucunun çalıştığı bilgisayardan** açılır; ağdaki başka
+makineden `403` döner. Sebep: oy vermeden önce sonucu gören dinleyicinin sonraki
+tercihleri yanıltılır. Sunucu açılışta adresi de yazar (`sonuçlar: …/rapor`).
+
+İçerik: gerçek tercih oranı + %95 Wilson aralığı + iki taraflı binom p-değeri,
+tanıma isabeti, ortalama güven ve karar süresi, deneme/dinleyici bazında döküm ve
+"±10 puan için ~97 oy" çubuğu — örneklemin yetip yetmediği bir bakışta görülsün.
+
 ## 8. Dosyalar
 
 | Dosya | İçerik |
@@ -123,5 +141,6 @@ düzeltme). Farklı sürümlerle kurulmuş oturumların oyları birleştirilmeme
 | `audio/*.wav` | opak adlı kayıtlar |
 | `index.html` | dinleme sayfası (etiket içermez) |
 | `votes.jsonl` | her oy bir satır: deneme, tercih, tahmin, güven, süre, kimlik |
+| `rapor.html` | `ophelia abtest rapor` ile üretilen sonuç sayfası |
 
 `votes.jsonl` ekleme (append) ile büyür; oturum silinmedikçe oylar korunur.

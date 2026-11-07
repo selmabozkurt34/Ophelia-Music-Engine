@@ -871,6 +871,36 @@ def _pct(value: float | None) -> str:
     return "—" if value is None else f"{value * 100:.1f}%"
 
 
+@abtest_app.command("rapor")
+def abtest_rapor(
+    directory: Annotated[Path | None, typer.Option("--dir", "-d", help="Oturum klasörü")] = None,
+    out: Annotated[Path | None, typer.Option("--out", "-o", help="Yazılacak HTML dosyası")] = None,
+    open_browser: Annotated[bool, typer.Option("--open/--no-open")] = True,
+) -> None:
+    """Sonuçları tarayıcıda okunacak tek dosyalık HTML rapor olarak yazar.
+
+    Test sürerken canlı görünüm için sunucunun `/rapor` adresini kullanın;
+    bu komut ise paylaşılabilir/arşivlenebilir dosyayı üretir.
+    """
+    import webbrowser
+
+    from ophelia.eval import REPORT_FILE, AbTestError, write_report
+
+    target = _latest_session(directory)
+    try:
+        path = write_report(target, out or target / REPORT_FILE)
+    except AbTestError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    console.print(f"[green]Rapor yazıldı:[/green] {path}")
+    console.print(
+        "  canlı sürüm: ophelia abtest serve … → "
+        "sunucu bilgisayarında http://127.0.0.1:<port>/rapor"
+    )
+    if open_browser:
+        webbrowser.open(path.resolve().as_uri())
+
+
 def _ci(interval: tuple[float, float] | None) -> str:
     if interval is None:
         return "—"

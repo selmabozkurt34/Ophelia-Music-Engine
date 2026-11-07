@@ -26,6 +26,12 @@ from ophelia.eval.abtest import (
     Vote,
     load_session,
 )
+from ophelia.eval.report import (
+    REPORT_ROUTE,
+    live_report_html,
+    report_dict,
+    report_visible_to,
+)
 
 MAX_BODY = 4096
 LOOPBACK = "127.0.0.1"
@@ -108,6 +114,19 @@ class VoteHandler(BaseHTTPRequestHandler):
                 self._error("bilinmeyen ses", HTTPStatus.NOT_FOUND)
                 return
             self._send_file(session.audio_dir / name, "audio/wav")
+            return
+        if route in (REPORT_ROUTE, f"{REPORT_ROUTE}.json"):
+            # Rapor yalnız sunucunun kendi bilgisayarından: canlı sonuç dinleyiciyi
+            # yanıltmasın (oy verecek kişi sonucu görmemeli).
+            if not report_visible_to(self.client_address[0]):
+                self._error("kaynakta rapor yalnız sunucu bilgisayarından açılır", HTTPStatus.FORBIDDEN)
+                return
+            if route.endswith(".json"):
+                from ophelia.eval.report import build_report
+
+                self._json(report_dict(build_report(session.directory)))
+                return
+            self._send(live_report_html(session).encode("utf-8"), "text/html; charset=utf-8")
             return
         if route == "favicon.ico":
             self._send(b"", "image/x-icon", HTTPStatus.NO_CONTENT)
@@ -210,6 +229,7 @@ def serve(
         print("  diğer adresler : " + " · ".join(urls[1:]))
     print(f"  oturum : {session.session_id} · {len(session.trials)} deneme")
     print(f"  oylar  : {session.votes_path}")
+    print(f"  sonuçlar: {urls[0]}{REPORT_ROUTE} (yalnız bu bilgisayarda; kendini yeniler)")
     if host not in {LOOPBACK, "localhost"}:
         print("  ağ     : yerel ağa açık — aynı ağdaki herkes oy verebilir (kimlik doğrulama yok)")
         print("           aynı bilgisayarda ikinci kişi için adresin sonuna ?yeni=1 ekleyin")
