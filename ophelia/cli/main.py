@@ -609,16 +609,24 @@ def audio_render(
     ensemble: Annotated[str | None, typer.Option("--ensemble", "-e")] = None,
     roles: Annotated[str | None, typer.Option("--roles", "-r")] = None,
     multitrack: Annotated[bool, typer.Option("--multitrack/--no-multitrack")] = True,
+    reverb: Annotated[
+        float, typer.Option("--reverb", min=0.0, max=1.0, help="Salon oranı (0 = kuru miks)")
+    ] = 0.24,
+    mastering: Annotated[
+        bool,
+        typer.Option("--master/--no-master", help="−14 LUFS hedefi + true peak tavanı"),
+    ] = True,
 ) -> None:
     """MIDI'yi enstrümanlara dağıtıp stereo WAV'a basar."""
     import mido
 
     from ophelia.audio import (
+        MixSettings,
         arrange,
         arrange_by_role,
         chorale_ensemble,
         peak,
-        render_parts,
+        render_with_stats,
         rms,
         stereo_width,
         write_multitrack_midi,
@@ -651,7 +659,8 @@ def audio_render(
                 break
 
     target = out or (WAV_OUT_DIR / f"{midi.stem}.wav")
-    samples = render_parts(parts, tempo_bpm=tempo)
+    settings = MixSettings(reverb=reverb, target_lufs=-14.0 if mastering else None)
+    samples, stats = render_with_stats(parts, tempo_bpm=tempo, settings=settings)
     write_wav(samples, str(target))
     if multitrack:
         write_multitrack_midi(parts, str(target.with_suffix(".mid")), tempo_bpm=tempo)
@@ -667,6 +676,13 @@ def audio_render(
         f"  tepe · rms · genişlik : {peak(samples):.2f} · {rms(samples):.3f} · "
         f"{stereo_width(samples):.3f}"
     )
+    if stats is not None:
+        console.print(
+            f"  yayın            : {stats.lufs_after:.1f} LUFS · true peak "
+            f"{stats.true_peak_db:.1f} dBTP · salon {reverb:.2f}"
+        )
+    else:
+        console.print("  yayın            : mastering kapalı (tepe normalizasyonu)")
     console.print(f"  çıktı            : {target}")
 
 

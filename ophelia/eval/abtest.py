@@ -38,6 +38,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ophelia.audio.ensemble import chorale_ensemble
+from ophelia.audio.mastering import master
 from ophelia.audio.render import SAMPLE_RATE, MixSettings, render_parts
 from ophelia.audio.render import write_wav as write_stereo_wav
 from ophelia.data.midi_io import iter_notes, load_midi
@@ -79,6 +80,7 @@ def tempo_of(path: str | Path, default: float = 100.0) -> float:
 
 
 def _mix_settings() -> MixSettings:
+    """İki kaynak için de aynı karıştırma: fark yalnızca notalarda olmalı."""
     return MixSettings()
 
 
@@ -117,9 +119,20 @@ def render_clip(
     if fade > 1:
         samples[:, -fade:] *= np.linspace(1.0, 0.0, fade, dtype=np.float32)
 
-    peak = float(np.max(np.abs(samples))) or 1.0
     settings = _mix_settings()
-    return (samples / peak * settings.peak * settings.master_gain).astype(np.float32)
+    if settings.target_lufs is None:
+        peak = float(np.max(np.abs(samples))) or 1.0
+        return (samples / peak * settings.peak * settings.master_gain).astype(np.float32)
+
+    # Seviye eşitlemesi **süre eşitlendikten sonra** yapılır: kısa eser sessizlikle
+    # doldurulduğu için LUFS'u önce ölçmek onu haksız biçimde yüksek bırakırdı.
+    mastered, _stats = master(
+        samples,
+        SAMPLE_RATE,
+        target_lufs=settings.target_lufs,
+        ceiling_db=settings.ceiling_db,
+    )
+    return mastered
 
 
 def _arrange(notes: list, ensemble: Sequence[str] | None) -> list:

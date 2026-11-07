@@ -4,10 +4,10 @@ Doğal dilde verilen komutları anlayarak **özgün müzik besteleyen**, besteyi
 enstrümanlara dağıtan, düzenlenebilir hâle getiren ve profesyonel ses dosyalarına
 dönüştüren bağımsız bir yapay zekâ müzik motoru.
 
-> **Durum:** 1-7. aşamalar tamamlandı. Model beste üretiyor, doğal dille
-yönlendirilebiliyor, enstrümanlara dağıtılıp stereo WAV'a basılabiliyor ve çıktı
-> **nota olarak (MusicXML)** dışa aktarılabiliyor. Sırada 8. aşama (mixing /
-mastering).
+> **Durum:** 1-7. aşamalar tamamlandı, 8. aşama sürüyor. Model beste üretiyor,
+> doğal dille yönlendirilebiliyor, enstrümanlara dağıtılıp stereo WAV'a
+> basılabiliyor, çıktı **nota olarak (MusicXML)** dışa aktarılabiliyor ve ses artık
+> salon + **−14 LUFS** yayın zincirinden geçiyor. Sırada SoundFont (gerçek örnekler).
 
 ## Hızlı başlangıç
 
@@ -239,6 +239,26 @@ ophelia notation export eser.mid --title "Deneme 1"
 | Sınır | nota başına velocity taşınamaz; ortalama velocity tek `<sound dynamics>` olarak yazılır |
 
 Gerekçe ve notasyon pazarı: [docs/piyasa_analizi.md](docs/piyasa_analizi.md).
+
+## Ses: tını, salon ve yayın zinciri
+
+Kuru harmonik sentez "oyun müziği" gibi duyuluyordu; 8. aşama tınıyı sürekli,
+notaları legato, miksi salonlu yaptı ve ölçülebilir bir yayın hedefi koydu.
+
+```bash
+ophelia audio render outputs/midi/eser.mid             # salon + −14 LUFS
+ophelia audio render eser.mid --reverb 0 --no-master    # kuru miks (7. aşama)
+```
+
+| Ölçüt | Değer |
+| --- | --- |
+| Yükseklik | hedef **−14 LUFS** (K-ağırlıklı, gating'siz yaklaşım) |
+| Tepe | true peak ≤ **−1 dBTP** (4× yeniden örneklemeli ölçüm) |
+| Tını | 12 harmonik + chorus + gecikmeli vibrato + sustain'lı ADSR |
+| Legato | ≤350 ms boşlukta 90 ms örtüşme; bırakma kuyruğu süreyi aşar |
+| Mekân | sentetik salon impuls yanıtı, 2,2 sn, stereo, tohum sabit |
+
+Ölçüm ve sınırlar: [docs/08_mixing.md](docs/08_mixing.md).
 
 ## Kör A/B dinleme testi
 

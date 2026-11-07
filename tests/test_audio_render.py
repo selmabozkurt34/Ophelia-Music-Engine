@@ -50,10 +50,20 @@ def test_mix_peak_is_below_clipping() -> None:
 
 
 def test_mix_duration_follows_notes() -> None:
-    mix = render_parts(_parts(), tempo_bpm=100.0)
-    # 2 vuruş (960 tick) @100 BPM = 1,2 sn + 0,35 sn kuyruk
-    seconds = mix.shape[1] / SAMPLE_RATE
-    assert 1.4 <= seconds <= 1.7
+    from ophelia.audio.render import TAIL_SECONDS
+
+    # 2 vuruş (960 tick) @100 BPM = 1,2 sn + kuyruk + reverb kuyruğu
+    settings = MixSettings()
+    seconds = render_parts(_parts(), tempo_bpm=100.0, settings=settings).shape[1] / SAMPLE_RATE
+    assert seconds >= 1.2 + TAIL_SECONDS - 0.05
+    # Üst sınır: kuyruk + reverb + en uzun bırakma/legato örtüşmesi
+    assert seconds <= 1.2 + TAIL_SECONDS + settings.reverb_seconds + 0.6
+
+    # Reverb kapalıyken süre yalnızca notalar + bırakmalarla belirlenir.
+    dry = render_parts(
+        _parts(), tempo_bpm=100.0, settings=MixSettings(reverb=0.0, target_lufs=None)
+    )
+    assert 1.4 <= dry.shape[1] / SAMPLE_RATE <= 1.85
 
 
 def test_silent_parts_are_skipped_safely() -> None:
@@ -79,10 +89,21 @@ def test_wav_file_is_stereo_16bit(tmp_path: Path) -> None:
     assert np.max(np.abs(data)) > 0
 
 
-def test_single_part_has_zero_width() -> None:
+def test_single_centered_part_stays_mono_without_reverb() -> None:
+    from ophelia.audio.render import channel_correlation
+
+    part = Part(instrument=get("piano"), notes=[_note(0, 60)], pan=0.0)
+    mix = render_parts(
+        [part], tempo_bpm=100.0, settings=MixSettings(reverb=0.0, target_lufs=None)
+    )
+    assert stereo_width(mix) < 0.01
+    assert channel_correlation(mix) > 0.999
+
+
+def test_reverb_widens_a_centered_part() -> None:
     part = Part(instrument=get("piano"), notes=[_note(0, 60)], pan=0.0)
     mix = render_parts([part], tempo_bpm=100.0)
-    assert stereo_width(mix) < 0.01
+    assert stereo_width(mix) > 0.01  # salon iki kanalda farklı yansıyor
 
 
 def test_render_is_deterministic() -> None:
@@ -92,8 +113,13 @@ def test_render_is_deterministic() -> None:
 
 
 def test_mix_settings_change_level() -> None:
-    quiet = render_parts(_parts(), tempo_bpm=100.0, settings=MixSettings(master_gain=0.2))
-    loud = render_parts(_parts(), tempo_bpm=100.0, settings=MixSettings(master_gain=0.9))
+    """Hedef LUFS kapalıyken seviye master_gain ile ayarlanır (8. aşama öncesi yol)."""
+    quiet = render_parts(
+        _parts(), tempo_bpm=100.0, settings=MixSettings(master_gain=0.2, target_lufs=None)
+    )
+    loud = render_parts(
+        _parts(), tempo_bpm=100.0, settings=MixSettings(master_gain=0.9, target_lufs=None)
+    )
     assert peak(quiet) < peak(loud)
 
 

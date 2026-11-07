@@ -12,7 +12,7 @@
 | 5 | Beste modeli | Eğitilmiş model, MIDI üretimi | ✅ Tamamlandı |
 | 6 | Doğal dil komut sistemi | Komut → parametre → model | ✅ Tamamlandı |
 | 7 | Enstrüman ve ses üretimi | Çok kanallı MIDI → ses | ✅ Tamamlandı |
-| 8 | Mixing / mastering | Yayın kalitesinde WAV | ⬜ |
+| 8 | Mixing / mastering | Yayın kalitesinde WAV | 🟡 Ses karakteri + mastering hazır |
 | 9 | Kullanıcı arayüzü | Uçtan uca çalışan uygulama | ⬜ |
 | 10 | Ophelia.fm yayın hazırlığı | İlk 5 eser + ilk single | ⬜ |
 
@@ -106,12 +106,21 @@ Ayrıntılar: [06_nlp.md](06_nlp.md).
 
 Ayrıntılar: [07_audio.md](07_audio.md).
 
-## Sonraki adım: 8. Aşama — Mixing / mastering
+## 8. Aşama — Mixing / mastering (sürüyor)
 
-Ses artık üretiliyor ama "yayın kalitesi" değil: reverb yok, dinamik işleme yok,
-sample tabanlı timbre yok.
+Dinleyici geri bildirimi ("oyun müziği gibi") ölçümle doğrulandı: sorun kompozisyonda
+değil, tını ve mekândaydı. İlk turda gelenler — ayrıntılar: [08_mixing.md](08_mixing.md).
 
-1. Reverb / delay / kompresör: kanal ve master zinciri
-2. SoundFont ya da örnek tabanlı enstrüman sesleri
-3. Loudness hedefi (LUFS) ve gerçek tepe (true peak) ölçümü
-4. WAV → MP3/FLAC dışa aktarım, metadata
+- [x] Sürekli tını (`ophelia/audio/timbre.py`): 12 harmonik, chorus, gecikmeli vibrato,
+      sustain'lı ADSR, koro nefesi
+- [x] Legato: kısa boşluklarda notalar 90 ms örtüşür; bırakma kuyruğu nota süresini aşar
+- [x] Salon reverb'ü (`reverb.py`): sentetik impuls yanıtı, stereo, tohum sabit
+- [x] Bus kompresörü + hedef **−14 LUFS** + **true peak ≤ −1 dBTP** (`mastering.py`)
+- [x] Ölçüm: aynı eserde LUFS −13,9 → −14,0 · sessizlik dip %0,8 → %0,1 ·
+      spektral merkez 948 → 1661 Hz · korelasyon 0,92 → 0,55 · 22 yeni test
+- [ ] SoundFont / örnek tabanlı enstrüman sesleri
+- [ ] Delay ve kanal bazlı dinamik işleme
+- [ ] WAV → MP3/FLAC dışa aktarım + metadata
+
+**Sonraki adım:** SoundFont ile gerçek enstrüman örnekleri, ardından dosya
+formatları. Ses karakteri değiştiği için A/B testi yeni zincirle yeniden kuruldu.

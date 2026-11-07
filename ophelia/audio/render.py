@@ -1,11 +1,13 @@
-"""Çok kanallı MIDI'yi stereo WAV'a basar (7. aşama).
+"""Çok kanallı MIDI'yi stereo WAV'a basar (7. aşama) + yayın zinciri (8. aşama).
 
-Sentez bilinçli olarak basit: her enstrüman için harmonik profil + zarf + pan.
-Amaç bir ses kütüphanesi değil, **duyulabilir ve düzenlenebilir** bir çıktı;
-8. aşamadaki mixing/mastering bunun üzerine kurulacak.
+Sinyal zinciri: nota → tını (harmonik seri + chorus + vibrato) → ADSR zarf →
+velocity → kanal seviyesi → pan → toplam → salon reverb'ü → kompresör → hedef
+LUFS → true peak tavanı.
 
-Sinyal zinciri: nota → harmonikler → zarf → velocity → kanal seviyesi → pan →
-toplam → tepe normalizasyonu (tepe ≤ -1 dBFS).
+7. aşamada zincir burada bitiyordu (kuru, tepe normalizasyonlu). Kuru miks
+koral müzikte \"oyun müziği\" gibi duyuluyordu: notalar birbirine bağlanmıyor,
+ataklar keskin, mekân yoktu. 8. aşama bunları tını (`timbre`), mekân (`reverb`)
+ve seviye (`mastering`) katmanlarına ayırır.
 """
 
 from __future__ import annotations
@@ -15,53 +17,44 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ophelia.audio import timbre
 from ophelia.audio.ensemble import Part
+from ophelia.audio.mastering import CEILING_DB, TARGET_LUFS, MasterStats, integrated_lufs, master
+from ophelia.audio.reverb import apply_reverb
 from ophelia.data.midi_io import NoteEvent
-from ophelia.theory.instruments import BASS, HARMONY, MELODY, TEXTURE
 
 SAMPLE_RATE = 44100
 TICKS_PER_SECOND = 480 * 100 / 60  # varsayılan: 480 PPQ, 100 BPM
 
-# Rol başına harmonik profili: (harmonik, genlik)
-PROFILES: dict[str, tuple[tuple[int, float], ...]] = {
-    MELODY: ((1, 1.0), (2, 0.42), (3, 0.22), (4, 0.12), (5, 0.06)),
-    HARMONY: ((1, 1.0), (2, 0.55), (3, 0.3), (4, 0.14), (6, 0.05)),
-    BASS: ((1, 1.0), (2, 0.28), (3, 0.1)),
-    TEXTURE: ((1, 1.0), (2, 0.3), (3, 0.25), (5, 0.08)),
-}
-DEFAULT_PROFILE = PROFILES[HARMONY]
+#: Sondaki notanın sönümü için pay (sn).
+TAIL_SECONDS = 0.35
+#: Bu kadar kısa boşluklarda notalar birbirine bağlanır (legato).
+LEGATO_GAP = 0.35
+#: Legato örtüşmesi: iki nota bir an birlikte tınlar, yay değişimi gibi.
+LEGATO_OVERLAP = 0.09
 
 
 @dataclass(frozen=True)
 class MixSettings:
-    """Karıştırma parametreleri."""
+    """Karıştırma ve yayın parametreleri."""
 
     sample_rate: int = SAMPLE_RATE
-    peak: float = 0.89  # -1 dBFS
+    peak: float = 0.89  # -1 dBFS (yalnızca hedef LUFS kapalıyken kullanılır)
     master_gain: float = 0.8
+    reverb: float = 0.24  # kuru sinyale göre ıslak oran
+    reverb_seconds: float = 2.2
+    target_lufs: float | None = TARGET_LUFS
+    ceiling_db: float = CEILING_DB
+    legato: bool = True
 
 
 def _frequency(pitch: int) -> float:
     return 440.0 * 2 ** ((pitch - 69) / 12)
 
 
-def _envelope(length: int, *, role: str, sample_rate: int) -> np.ndarray:
-    """Rol başına zarf: yaylılarda yavaş atak, piyanoda hızlı sönüm."""
-    time = np.arange(length, dtype=np.float32) / sample_rate
-    if role in {TEXTURE, HARMONY}:
-        attack_s, decay = 0.06, 0.55
-    elif role == BASS:
-        attack_s, decay = 0.01, 1.6
-    else:
-        attack_s, decay = 0.008, 2.4
-
-    attack = max(1, int(attack_s * sample_rate))
-    envelope = np.exp(-time * decay)
-    envelope[:attack] = np.linspace(0.0, 1.0, attack, dtype=np.float32)
-    release = max(1, int(0.08 * sample_rate))
-    if length > release * 2:
-        envelope[-release:] *= np.linspace(1.0, 0.0, release, dtype=np.float32)
-    return envelope
+def _note_seed(note: NoteEvent) -> int:
+    """Nota başına sabit tohum: vibrato/chorus fazı tekrarlanabilir olsun."""
+    return int(note.pitch * 7919 + note.start * 31 + note.duration)
 
 
 def synthesize_part(
@@ -70,38 +63,108 @@ def synthesize_part(
     seconds: float,
     ticks_per_second: float,
     sample_rate: int = SAMPLE_RATE,
+    legato: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Bir parçayı stereo dalga formuna çevirir (sol, sağ)."""
+    """Bir parçayı stereo dalga formuna çevirir (sol, sağ).
+
+    Dönen diziler ``seconds``'tan uzun olabilir: her notanın bırakma kuyruğu
+    (ve legato örtüşmesi) süreye sığmak zorunda değil.
+    """
     total = max(1, int(seconds * sample_rate))
-    mono = np.zeros(total, dtype=np.float32)
-    # Zarf ve tını **müzikal işleve** göre seçilir: çello bas çalıyorsa
-    # yaylı zarfı değil bas profili kullanılır.
     role = part.part_role
-    profile = PROFILES.get(role, DEFAULT_PROFILE)
+    voice = timbre.voice_for(role)
+    notes = sorted(part.notes, key=lambda item: (item.start, item.pitch))
+    onsets = sorted({note.start for note in notes})
+    following = {current: nxt for current, nxt in zip(onsets, onsets[1:], strict=False)}
 
-    for note in part.notes:
-        start = int(note.start / ticks_per_second * sample_rate)
-        length = max(1, int(note.duration / ticks_per_second * sample_rate))
-        stop = min(total, start + length)
-        if stop <= start:
-            continue
+    rendered: list[tuple[int, np.ndarray]] = []
+    for note in notes:
+        end_tick = note.end
+        next_onset = following.get(note.start)
+        if legato and next_onset is not None:
+            gap = (next_onset - end_tick) / ticks_per_second
+            if gap <= LEGATO_GAP:
+                end_tick = max(end_tick, next_onset) + int(LEGATO_OVERLAP * ticks_per_second)
 
-        time = np.arange(stop - start, dtype=np.float32) / sample_rate
-        frequency = _frequency(note.pitch)
-        wave = np.zeros_like(time)
-        for harmonic, weight in profile:
-            if frequency * harmonic < sample_rate / 2:
-                wave += weight * np.sin(2 * math.pi * frequency * harmonic * time)
-
-        envelope = _envelope(stop - start, role=role, sample_rate=sample_rate)
+        held = max(1.0 / sample_rate, (end_tick - note.start) / ticks_per_second)
+        buffer_seconds = held + voice.release
+        signal = timbre.note_signal(
+            note.pitch,
+            buffer_seconds,
+            voice=voice,
+            sample_rate=sample_rate,
+            seed=_note_seed(note),
+        )
+        envelope = timbre.amplitude_envelope(
+            held, buffer_seconds, voice=voice, sample_rate=sample_rate
+        )
         gain = (note.velocity / 127.0) ** 1.4 * 0.22
-        mono[start:stop] += wave * envelope * gain
+        start = int(note.start / ticks_per_second * sample_rate)
+        rendered.append((start, (signal * envelope * gain).astype(np.float32)))
+
+    length = max([total, *(start + wave.size for start, wave in rendered)])
+    mono = np.zeros(length, dtype=np.float32)
+    for start, wave in rendered:
+        if start >= length:
+            continue
+        stop = min(length, start + wave.size)
+        mono[start:stop] += wave[: stop - start]
 
     # Eşit güçte pan (sin/cos): merkezde her iki kanal aynı seviyede
     angle = (part.pan + 1.0) * math.pi / 4
     left = mono * math.cos(angle)
     right = mono * math.sin(angle)
     return left, right
+
+
+def _render(
+    parts: list[Part],
+    *,
+    tempo_bpm: float,
+    settings: MixSettings,
+) -> tuple[np.ndarray, MasterStats | None]:
+    if not parts:
+        raise ValueError("mikslenecek parça yok")
+
+    ticks_per_second = 480 * tempo_bpm / 60.0
+    end_tick = max((note.end for part in parts for note in part.notes), default=0)
+    seconds = end_tick / ticks_per_second + TAIL_SECONDS
+
+    channels: list[tuple[np.ndarray, np.ndarray]] = [
+        synthesize_part(
+            part,
+            seconds=seconds,
+            ticks_per_second=ticks_per_second,
+            sample_rate=settings.sample_rate,
+            legato=settings.legato,
+        )
+        for part in parts
+    ]
+    length = max(left.size for left, _ in channels)
+    mix = np.zeros((2, length), dtype=np.float32)
+    for left, right in channels:
+        mix[0, : left.size] += left
+        mix[1, : right.size] += right
+
+    if settings.reverb > 0:
+        mix = apply_reverb(
+            mix,
+            sample_rate=settings.sample_rate,
+            wet=settings.reverb,
+            seconds=settings.reverb_seconds,
+        )
+
+    if settings.target_lufs is None:
+        level = float(np.max(np.abs(mix))) or 1.0
+        return (mix / level * settings.peak * settings.master_gain).astype(np.float32), None
+
+    mastered, stats = master(
+        mix,
+        settings.sample_rate,
+        target_lufs=settings.target_lufs,
+        ceiling_db=settings.ceiling_db,
+    )
+    return mastered, stats
 
 
 def render_parts(
@@ -111,28 +174,18 @@ def render_parts(
     settings: MixSettings | None = None,
 ) -> np.ndarray:
     """Parçaları stereo (2, N) float32 diziye miksler."""
-    config = settings or MixSettings()
-    if not parts:
-        raise ValueError("mikslenecek parça yok")
+    mix, _stats = _render(parts, tempo_bpm=tempo_bpm, settings=settings or MixSettings())
+    return mix
 
-    ticks_per_second = 480 * tempo_bpm / 60.0
-    end_tick = max((note.end for part in parts for note in part.notes), default=0)
-    tail = 0.35  # son notanın sönümü için pay
-    seconds = end_tick / ticks_per_second + tail
 
-    mix = np.zeros((2, int(seconds * config.sample_rate)), dtype=np.float32)
-    for part in parts:
-        left, right = synthesize_part(
-            part,
-            seconds=seconds,
-            ticks_per_second=ticks_per_second,
-            sample_rate=config.sample_rate,
-        )
-        mix[0, : left.size] += left
-        mix[1, : right.size] += right
-
-    peak = float(np.max(np.abs(mix))) or 1.0
-    return (mix / peak * config.peak * config.master_gain).astype(np.float32)
+def render_with_stats(
+    parts: list[Part],
+    *,
+    tempo_bpm: float = 100.0,
+    settings: MixSettings | None = None,
+) -> tuple[np.ndarray, MasterStats | None]:
+    """Miksin yanında yayın zincirinin ölçümünü de döner (CLI raporu için)."""
+    return _render(parts, tempo_bpm=tempo_bpm, settings=settings or MixSettings())
 
 
 def write_wav(samples: np.ndarray, path: str, *, sample_rate: int = SAMPLE_RATE) -> str:
@@ -173,6 +226,23 @@ def stereo_width(samples: np.ndarray) -> float:
         return 0.0
     difference = samples[0] - samples[1]
     return float(np.sqrt(np.mean(np.square(difference, dtype=np.float64))))
+
+
+def channel_correlation(samples: np.ndarray) -> float:
+    """Sol/sağ korelasyonu: 1 = mono, 0 = ilgisiz."""
+    if samples.shape[0] != 2:
+        return 1.0
+    left = samples[0].astype(np.float64)
+    right = samples[1].astype(np.float64)
+    denominator = math.sqrt(float(np.sum(left * left)) * float(np.sum(right * right)))
+    if denominator <= 0.0:
+        return 1.0
+    return float(np.sum(left * right) / denominator)
+
+
+def loudness(samples: np.ndarray, sample_rate: int = SAMPLE_RATE) -> float:
+    """Karışımın bütünleşik LUFS değeri (rapor için)."""
+    return integrated_lufs(samples, sample_rate)
 
 
 def note_seconds(notes: list[NoteEvent], tempo_bpm: float) -> float:

@@ -78,9 +78,10 @@ Kurulumda uygulanan kurallar (hepsi testli):
 
 ## 6. Bilinen konfoundlar (dürüst sınırlar)
 
-1. **Seviye eşitlemesi LUFS değil, tepe normalizasyonu.** İki kayıt tepeye göre
-   eşitleniyor; algılanan yükseklik farklı olabilir ve tercihi etkileyebilir.
-   8. aşamadaki LUFS hedefi bu konfoundu kapatacak (bkz. `docs/08_mixing.md`).
+1. ~~Seviye eşitlemesi tepe normalizasyonuydu.~~ 8. aşamadan sonra iki kayıt da
+   **−14 LUFS**'a eşitleniyor (true peak ≤ −1 dBTP), yani "hangisi daha yüksek"
+   konfoundu kapandı. 7. aşama zinciriyle üretilmiş eski oturumlarda bu geçerli
+   değildi; o oylar yeni zincirle karşılaştırılamaz.
 2. **Timbre aynı ve sentetik.** İki kayıt da aynı harmonik sentezden geçiyor. Yani test
    *kompozisyonu* ölçer, *ses kalitesini* değil — "hangi piyano" değil "hangi nota".
 3. **Tek stil.** Gerçek taraf yalnızca Bach koralı; sonuç başka stillere genellenemez.
@@ -102,6 +103,10 @@ Kurulumda uygulanan kurallar (hepsi testli):
 
 Ölçülen ilk oturum (6 deneme, 1 dinleyici, 6 geçerli oy): tercih %33,3 (GA 9,7–70,0,
 p = 0,69), tanıma 2/5. Yani henüz iki yönde de iddia yok.
+
+**Sürüm uyarısı:** ses karakteri 8. aşamada değişti (salon + −14 LUFS + yeni tını).
+Farklı zincirlerle üretilmiş oturumların oyları birleştirilmemeli; her tur kendi
+zinciriyle yeniden kurulmalı.
 
 ## 8. Dosyalar
 
