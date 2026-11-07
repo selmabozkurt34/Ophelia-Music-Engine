@@ -1003,6 +1003,26 @@ def abtest_score(
         console.print(f"  JSON           : {json_out}")
 
 
+@app.command("ui")
+def ui_command(
+    port: Annotated[int, typer.Option("--port", "-p")] = 8810,
+    browser: Annotated[bool, typer.Option("--open/--no-open")] = True,
+    lan: Annotated[
+        bool,
+        typer.Option("--lan/--local", help="Yerel ağa aç: başka bilgisayarlardan da kullanılsın"),
+    ] = False,
+    host: Annotated[str, typer.Option("--host", help="Bağlanılacak adres")] = "127.0.0.1",
+) -> None:
+    """Yerel web arayüzü: komut → beste → dinle → WAV/MIDI/MusicXML indir."""
+    from ophelia.ui import serve
+
+    try:
+        serve(host="0.0.0.0" if lan else host, port=port, open_browser=browser)
+    except OSError as exc:
+        console.print(f"[red]Arayüz açılamadı:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+
 @app.command("compose")
 def compose_command(
     command: Annotated[str, typer.Argument(help="Doğal dil isteği, örn. 'hüzünlü la minör 30 sn'")],

@@ -13,7 +13,7 @@
 | 6 | Doğal dil komut sistemi | Komut → parametre → model | ✅ Tamamlandı |
 | 7 | Enstrüman ve ses üretimi | Çok kanallı MIDI → ses | ✅ Tamamlandı |
 | 8 | Mixing / mastering | Yayın kalitesinde WAV | 🟡 Ses karakteri + mastering hazır |
-| 9 | Kullanıcı arayüzü | Uçtan uca çalışan uygulama | ⬜ |
+| 9 | Kullanıcı arayüzü | Uçtan uca çalışan uygulama | ✅ Yerel web arayüzü |
 | 10 | Ophelia.fm yayın hazırlığı | İlk 5 eser + ilk single | ⬜ |
 
 ## 1. Aşama — tamamlananlar
@@ -124,3 +124,16 @@ değil, tını ve mekândaydı. İlk turda gelenler — ayrıntılar: [08_mixing
 
 **Sonraki adım:** SoundFont ile gerçek enstrüman örnekleri, ardından dosya
 formatları. Ses karakteri değiştiği için A/B testi yeni zincirle yeniden kuruldu.
+
+---
+
+## 9. Aşama — tamamlananlar
+
+- [x] Tek sayfalık yerel web arayüzü (`ophelia/ui/`): komut → üret → dinle → indir
+- [x] `POST /compose` + `/api/status` + dosya uçları; beyaz liste ile path traversal engeli
+- [x] Girdi doğrulama (boş/uzun komut, tohum, sıcaklık, gövde boyutu) — 15 test
+- [x] Model ilk istekte yüklenir, üretim kilitli (CPU'da iki nesil aynı anda çalışmaz)
+- [x] Varsayılan yalnız `127.0.0.1`; `--lan` bilinçli tercih, kimlik doğrulama yok
+- [x] Ölçüm: ilk istek 11,6 sn, sıcak istek 8,0 sn (20 sn'lik eser, CPU)
+
+Ayrıntılar: [09_ui.md](09_ui.md).

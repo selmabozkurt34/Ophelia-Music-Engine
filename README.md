@@ -240,6 +240,27 @@ ophelia notation export eser.mid --title "Deneme 1"
 
 Gerekçe ve notasyon pazarı: [docs/piyasa_analizi.md](docs/piyasa_analizi.md).
 
+## Arayüz: komut → beste → dinle → indir
+
+```bash
+ophelia ui                     # http://127.0.0.1:8810/
+ophelia ui --port 8811 --lan   # yerel ağdaki diğer bilgisayarlar
+```
+
+Tek sayfa: Türkçe komut yazılır, model CPU'da üretir (~8–12 sn / 20 sn eser),
+sonuç oynatıcıda dinlenir ve **WAV / MIDI / MusicXML** olarak indirilir. Sayfada
+tonalite, tempo, süre, nota sayısı, LUFS ve true peak gösterilir.
+
+| Ölçüt | Değer |
+| --- | --- |
+| Sunucu | `stdlib` (yeni bağımlılık yok), varsayılan yalnız `127.0.0.1` |
+| Uçlar | `GET /` · `GET /api/status` · `POST /compose` · `GET /audio|midi|score/<ad>` |
+| Dosya erişimi | beyaz liste; `../` ve bilinmeyen ad **404** |
+| Girdi | komut ≤400 karakter, tohum ≥0, sıcaklık 0,1–2,0, gövde ≤8 KB |
+| Üretim | kilitli (CPU'da tek sıra); model ilk istekte yüklenir |
+
+Ayrıntılar: [docs/09_ui.md](docs/09_ui.md).
+
 ## Ses: tını, salon ve yayın zinciri
 
 Kuru harmonik sentez "oyun müziği" gibi duyuluyordu; 8. aşama tınıyı sürekli,

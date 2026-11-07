@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ophelia — beste motoru</title>
+<style>
+  :root { color-scheme: dark; --bg:#0b0e14; --panel:#12161d; --line:#1e2530;
+          --text:#e6e9ef; --muted:#8b95a7; --accent:#8aa9c9; --good:#8fb98c; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:28px 20px 64px; background:var(--bg); color:var(--text);
+         font:15px/1.6 "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 820px; margin: 0 auto; }
+  h1 { font-size:22px; font-weight:600; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:22px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px;
+          padding:18px; margin-bottom:16px; }
+  .label { color:var(--muted); font-size:12px; text-transform:uppercase;
+           letter-spacing:.07em; margin-bottom:8px; }
+  textarea { width:100%; min-height:72px; resize:vertical; font:inherit; padding:12px;
+             border-radius:10px; border:1px solid var(--line); background:#0f1319; color:var(--text); }
+  textarea:focus, input:focus, select:focus { outline:1px solid #3a4f70; }
+  button { font:inherit; cursor:pointer; border-radius:10px; border:1px solid var(--line);
+           background:#1a2130; color:var(--text); padding:11px 16px; }
+  button:hover:not(:disabled) { background:#222b3d; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.primary { background:#2b3b55; border-color:#3a4f70; }
+  button.chip { padding:6px 10px; font-size:13px; color:var(--muted); }
+  button.chip:hover { color:var(--text); }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:12px;
+          margin-top:8px; }
+  .field { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--muted); }
+  .field input, .field select { font:inherit; padding:8px 10px; border-radius:9px;
+          border:1px solid var(--line); background:#0f1319; color:var(--text); }
+  .hint { color:var(--muted); font-size:13px; }
+  audio { width:100%; margin-top:6px; }
+  .meta { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+          gap:10px; margin-top:12px; }
+  .stat { background:#0f1319; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .stat b { display:block; font-size:17px; font-weight:600; }
+  .stat span { color:var(--muted); font-size:12px; }
+  .error { color:#d98a8a; font-size:14px; margin-top:10px; }
+  .instruments { margin:10px 0 0; padding:0; list-style:none; font-size:13px; color:var(--muted); }
+  .instruments li { padding:3px 0; }
+  a.dl { color:var(--accent); margin-right:14px; font-size:13px; text-decoration:none; }
+  a.dl:hover { text-decoration:underline; }
+  code { background:#0f1319; padding:1px 5px; border-radius:5px; font-size:13px; }
+  .spinner { display:inline-block; width:12px; height:12px; border-radius:50%;
+             border:2px solid #3a4f70; border-top-color:var(--accent); margin-right:8px;
+             animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  [hidden] { display:none !important; }
+</style>
+<main>
+  <h1>Ophelia</h1>
+  <div class="sub">Türkçe komut yazın; motor tonu, tempoyu ve süreyi ona göre kurar.
+    Çıktı dinlenebilir WAV, düzenlenebilir MIDI ve nota (MusicXML) olarak iner.</div>
+
+  <section class="card">
+    <div class="label">Komut</div>
+    <textarea id="command" spellcheck="false">hüzünlü la minör, yavaş, 30 saniye, yaylılar ve kontrbas</textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="chip" data-example="neşeli do majör, hızlı, 20 saniye, keman ve çello">neşeli do majör · 20 sn</button>
+      <button class="chip" data-example="sakin re minör, 25 saniye, melodi, armoni ve bas">melodi + armoni + bas</button>
+      <button class="chip" data-example="ağır si bemol minör, çok yavaş, 40 saniye">ağır si bemol minör · 40 sn</button>
+    </div>
+
+    <div class="grid">
+      <label class="field">Tohum (boş = rastgele)
+        <input id="seed" type="number" min="0" placeholder="auto">
+      </label>
+      <label class="field">Sıcaklık
+        <select id="temperature">
+          <option value="0.8">0,80 · güvenli</option>
+          <option value="0.95" selected>0,95 · dengeli</option>
+          <option value="1.1">1,10 · serbest</option>
+        </select>
+      </label>
+      <label class="field">Nota (MusicXML)
+        <select id="xml"><option value="no" selected>hayır</option><option value="yes">evet</option></select>
+      </label>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="primary" id="generate">Üret</button>
+      <span class="hint" id="status"></span>
+    </div>
+    <div class="error" id="error" hidden></div>
+    <p class="hint" style="margin-top:12px">Model bu bilgisayarda (CPU) çalışır; 30 saniyelik bir eser
+      genellikle 10–40 saniye sürer. Her şey yerelde kalır, hiçbir veri dışarı gitmez.</p>
+  </section>
+
+  <section class="card" id="result" hidden>
+    <div class="label">Sonuç</div>
+    <audio id="player" controls preload="auto"></audio>
+    <div class="meta">
+      <div class="stat"><b id="key">—</b><span>tonalite</span></div>
+      <div class="stat"><b id="tempo">—</b><span>tempo</span></div>
+      <div class="stat"><b id="seconds">—</b><span>süre</span></div>
+      <div class="stat"><b id="notes">—</b><span>nota</span></div>
+      <div class="stat"><b id="lufs">—</b><span>yükseklik</span></div>
+      <div class="stat"><b id="peak">—</b><span>true peak</span></div>
+    </div>
+    <ul class="instruments" id="instruments"></ul>
+    <div class="row" style="margin-top:14px">
+      <a class="dl" id="dl-wav" href="#" download>WAV indir</a>
+      <a class="dl" id="dl-midi" href="#" download>MIDI indir</a>
+      <a class="dl" id="dl-xml" href="#" download hidden>MusicXML indir</a>
+      <button class="chip" id="again">Aynı komut, yeni tohum</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const state = { busy: false, timer: 0, startedAt: 0 };
+
+for (const button of document.querySelectorAll("button[data-example]")) {
+  button.addEventListener("click", () => { $("command").value = button.dataset.example; });
+}
+
+function status(text) { $("status").textContent = text; }
+function fail(message) {
+  $("error").textContent = message;
+  $("error").hidden = false;
+}
+
+async function compose(seedOverride) {
+  if (state.busy) return;
+  const command = $("command").value.trim();
+  if (!command) { fail("Önce bir komut yazın."); return; }
+
+  const seedRaw = seedOverride ?? $("seed").value;
+  const payload = {
+    command,
+    seed: seedRaw === "" ? null : Number(seedRaw),
+    temperature: Number($("temperature").value),
+    wav: true,
+    xml: $("xml").value === "yes",
+  };
+
+  state.busy = true;
+  $("generate").disabled = true;
+  $("again").disabled = true;
+  $("error").hidden = true;
+  state.startedAt = performance.now();
+  state.timer = setInterval(() => {
+    const elapsed = Math.round((performance.now() - state.startedAt) / 1000);
+    status(`model çalışıyor… ${elapsed} sn`);
+  }, 250);
+  status("model çalışıyor… 0 sn");
+
+  try {
+    const response = await fetch("compose", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    show(data);
+  } catch (error) {
+    fail(error.message);
+  } finally {
+    clearInterval(state.timer);
+    state.busy = false;
+    $("generate").disabled = false;
+    $("again").disabled = false;
+    status("");
+  }
+}
+
+function show(data) {
+  $("result").hidden = false;
+  $("key").textContent = data.key || "—";
+  $("tempo").textContent = `${Math.round(data.tempo_bpm)} BPM`;
+  $("seconds").textContent = `${data.duration_seconds.toFixed(1)} sn`;
+  $("notes").textContent = data.n_notes;
+  $("lufs").textContent = data.lufs != null ? `${data.lufs.toFixed(1)} LUFS` : "—";
+  $("peak").textContent = data.true_peak != null ? `${data.true_peak.toFixed(1)} dBTP` : "—";
+
+  const player = $("player");
+  player.src = data.wav || "";
+  player.load();
+
+  $("instruments").innerHTML = "";
+  for (const part of data.instruments) {
+    const item = document.createElement("li");
+    item.textContent = `${part.name} · ${part.role} · ${part.notes} nota`;
+    $("instruments").appendChild(item);
+  }
+
+  const links = { "dl-wav": data.wav, "dl-midi": data.midi, "dl-xml": data.xml };
+  for (const [id, href] of Object.entries(links)) {
+    const link = $(id);
+    link.hidden = !href;
+    if (href) link.href = href;
+  }
+}
+
+$("generate").addEventListener("click", () => compose());
+$("again").addEventListener("click", () => {
+  $("seed").value = String(Math.floor(Math.random() * 100000));
+  compose($("seed").value);
+});
+$("command").addEventListener("keydown", event => {
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) compose();
+});
+
+fetch("api/status").then(r => r.json()).then(data => {
+  if (!data.ready) fail("Model ağırlığı bulunamadı. Önce: ophelia model train");
+}).catch(() => {});
+</script>
+</html>
