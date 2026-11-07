@@ -101,6 +101,8 @@ Ayrıntılar: [06_nlp.md](06_nlp.md).
 - [x] Rol modu: 121 nota → 42/41/38, MIDI program 40/41/33, 20,4 sn stereo WAV
 - [x] Perküsyon rolü açık hatayla reddedilir (davul kalıbı 8. aşamada)
 - [x] MusicXML dışa aktarımı (piyasa raporunun P0'ı): akor, çok ses, bağ, anahtar imi — 14 test
+- [x] Kör A/B dinleme altyapısı (piyasa raporunun P0'ı): oturum kurma, yerel/ağ sunucusu,
+      Wilson aralığı + kesin binom p, dinleyici kimliği ve yinelenen oy koruması — 22 test
 
 Ayrıntılar: [07_audio.md](07_audio.md).
 

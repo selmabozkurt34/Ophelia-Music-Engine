@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ophelia — kör dinleme testi</title>
+<style>
+  :root { color-scheme: dark; --bg:#0b0e14; --panel:#12161d; --line:#1e2530;
+          --text:#e6e9ef; --muted:#8b95a7; --accent:#8aa9c9; --good:#8fb98c; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:28px 20px 60px; background:var(--bg); color:var(--text);
+         font:15px/1.6 "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size:21px; font-weight:600; margin:0 0 6px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:22px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px;
+          padding:20px; margin-bottom:16px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:620px) { .row { grid-template-columns:1fr; } }
+  .side { border:1px solid var(--line); border-radius:12px; padding:14px; background:#0f1319; }
+  .side h2 { font-size:15px; margin:0 0 10px; font-weight:600; }
+  audio { width:100%; }
+  button { font:inherit; cursor:pointer; border-radius:10px; border:1px solid var(--line);
+           background:#1a2130; color:var(--text); padding:11px 16px; }
+  button:hover:not(:disabled) { background:#222b3d; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.primary { background:#2b3b55; border-color:#3a4f70; }
+  button.ghost { background:none; border-color:transparent; color:var(--accent);
+                 padding:2px 4px; text-decoration:underline; font-size:13px; }
+  button.ghost:hover:not(:disabled) { background:none; color:var(--text); }
+  button.chosen { background:#2f4a37; border-color:var(--good); }
+  .choices { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:6px; }
+  @media (max-width:620px) { .choices { grid-template-columns:1fr; } }
+  .label { color:var(--muted); font-size:12px; text-transform:uppercase;
+           letter-spacing:.07em; margin:22px 0 8px; }
+  .hint { color:var(--muted); font-size:13px; }
+  .progress { height:6px; background:#1a2130; border-radius:99px; overflow:hidden; margin-bottom:18px; }
+  .progress > div { height:100%; width:0; background:var(--accent); transition:width .25s; }
+  .meta { display:flex; justify-content:space-between; color:var(--muted); font-size:12px; margin-bottom:8px; }
+  .stars { display:flex; gap:8px; }
+  .stars button { padding:8px 14px; }
+  .error { color:#d98a8a; font-size:13px; margin-top:10px; }
+  .center { text-align:center; }
+  code { background:#0f1319; padding:1px 5px; border-radius:5px; font-size:13px; }
+</style>
+<main>
+  <h1 id="title">Kör dinleme testi</h1>
+  <div class="sub">Her denemede iki kısa kayıt var: biri gerçek bir Bach korali, biri yapay zekâ üretimi.
+    Kayıtlar aynı enstrümanlarla, aynı uzunlukta çalınıyor. Hangisinin hangisi olduğunu bilmiyorsunuz — bilmeniz de gerekmiyor.</div>
+
+  <section id="intro" class="card">
+    <div class="label">Nasıl çalışır</div>
+    <ul>
+      <li>İki kaydı da baştan sona dinleyin (isterseniz birkaç kez).</li>
+      <li><strong>Hangisini daha çok beğendiniz?</strong> — eşit de diyebilirsiniz.</li>
+      <li>Sonra <strong>hangisinin insan elinden çıktığını</strong> tahmin edin; emin değilseniz boş bırakın.</li>
+      <li>Kulaklık önerilir. Test yaklaşık 8-10 dakika sürer; yarıda bırakabilirsiniz,
+          verdiğiniz yanıtlar kaydedilir.</li>
+    </ul>
+    <p class="hint">Yanıtlar yalnızca bu bilgisayardaki sunucuya yazılır; kimliğiniz rastgele bir kod.
+      Aynı bilgisayarda ikinci bir kişi test edecekse aşağıdaki bağlantıyı kullanmalı —
+      yoksa iki kişi tek kimlikle kaydedilir.</p>
+    <div style="margin-top:14px"><button class="primary" id="start">Teste başla</button></div>
+    <p class="hint" style="margin-top:10px">Dinleyici kodu: <code id="listenerCode">—</code> ·
+      <button class="ghost" id="newListener">Başka bir dinleyici olarak başla</button></p>
+  </section>
+
+  <section id="test" class="card" hidden>
+    <div class="meta"><span id="counter">Deneme 1</span><span id="timer"></span></div>
+    <div class="progress"><div id="bar"></div></div>
+
+    <div class="row">
+      <div class="side" id="sideA"><h2>Kayıt A</h2><audio id="audioA" controls preload="auto"></audio></div>
+      <div class="side" id="sideB"><h2>Kayıt B</h2><audio id="audioB" controls preload="auto"></audio></div>
+    </div>
+
+    <div class="label">Hangisini daha çok beğendiniz?</div>
+    <div class="choices">
+      <button id="prefA">A daha iyi</button>
+      <button id="prefB">B daha iyi</button>
+      <button id="prefTie">Eşit</button>
+    </div>
+
+    <div id="second" hidden>
+      <div class="label">Sizce hangisi insan tarafından yazılmış?</div>
+      <div class="choices">
+        <button id="humanA">A insan</button>
+        <button id="humanB">B insan</button>
+        <button id="humanNone">Emin değilim</button>
+      </div>
+
+      <div class="label">Bu kararda ne kadar emindiniz? (isteğe bağlı)</div>
+      <div class="stars" id="stars">
+        <button data-v="1">1 · tahmin</button>
+        <button data-v="2">2</button>
+        <button data-v="3">3</button>
+        <button data-v="4">4</button>
+        <button data-v="5">5 · eminim</button>
+      </div>
+
+      <div style="margin-top:20px"><button class="primary" id="next" disabled>Yanıtı gönder</button></div>
+      <div class="error" id="error" hidden></div>
+    </div>
+  </section>
+
+  <section id="done" class="card center" hidden>
+    <div class="label">Bitti</div>
+    <p id="doneText">Teşekkürler.</p>
+    <p class="hint">Sonuçlar tüm dinleyiciler toplandıktan sonra <code>ophelia abtest score</code> ile hesaplanır.</p>
+    <p class="hint">Dinleyici kodu: <code id="doneCode">—</code> ·
+      <button class="ghost" id="newListenerDone">Başka bir dinleyici olarak başla</button></p>
+  </section>
+</main>
+
+<script>
+// "?yeni=1" yeni bir kimlik üretir: aynı tarayıcıda ikinci dinleyici böyle ayrılır.
+const params = new URLSearchParams(location.search);
+const freshIdentity = params.has("yeni") || params.has("new");
+if (freshIdentity) {
+  localStorage.removeItem("ophelia.listener");
+  history.replaceState(null, "", location.pathname);
+}
+
+const state = {
+  listener: localStorage.getItem("ophelia.listener") || newListenerId(),
+  trials: [],
+  index: 0,
+  preference: null,
+  humanGuess: null,
+  confidence: null,
+  startedAt: 0,
+  answered: 0,
+};
+localStorage.setItem("ophelia.listener", state.listener);
+
+function newListenerId() {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return "L-" + Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+}
+
+const $ = id => document.getElementById(id);
+const audioA = $("audioA"), audioB = $("audioB");
+
+for (const id of ["listenerCode", "doneCode"]) $(id).textContent = state.listener;
+
+function nextListener() {
+  localStorage.removeItem("ophelia.listener");
+  location.replace(`${location.pathname}?yeni=1`);
+}
+$("newListener").addEventListener("click", nextListener);
+$("newListenerDone").addEventListener("click", nextListener);
+
+async function boot() {
+  const response = await fetch("trials.json", { cache: "no-store" });
+  state.trials = await response.json();
+  $("counter").textContent = `Deneme 1 / ${state.trials.length}`;
+}
+
+function loadTrial() {
+  const trial = state.trials[state.index];
+  state.preference = null;
+  state.humanGuess = null;
+  state.confidence = null;
+  state.startedAt = performance.now();
+
+  audioA.src = trial.a;
+  audioB.src = trial.b;
+  audioA.load(); audioB.load();
+
+  for (const id of ["prefA", "prefB", "prefTie", "humanA", "humanB", "humanNone"]) {
+    $(id).classList.remove("chosen");
+  }
+  for (const button of $("stars").querySelectorAll("button")) button.classList.remove("chosen");
+  $("second").hidden = true;
+  $("next").disabled = true;
+  $("error").hidden = true;
+  $("counter").textContent = `Deneme ${state.index + 1} / ${state.trials.length}`;
+  $("bar").style.width = `${(state.index / state.trials.length) * 100}%`;
+  $("timer").textContent = "";
+}
+
+function choosePreference(value, button) {
+  state.preference = value;
+  for (const id of ["prefA", "prefB", "prefTie"]) $(id).classList.remove("chosen");
+  button.classList.add("chosen");
+  $("second").hidden = false;
+}
+
+function chooseHuman(value, button) {
+  state.humanGuess = value;
+  for (const id of ["humanA", "humanB", "humanNone"]) $(id).classList.remove("chosen");
+  button.classList.add("chosen");
+  $("next").disabled = false;
+}
+
+async function submit() {
+  const trial = state.trials[state.index];
+  const payload = {
+    trial: trial.id,
+    preference: state.preference,
+    listener: state.listener,
+    human_guess: state.humanGuess,
+    confidence: state.confidence,
+    elapsed_ms: Math.round(performance.now() - state.startedAt),
+  };
+  $("next").disabled = true;
+  try {
+    const response = await fetch("vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  } catch (error) {
+    $("error").textContent = `Yanıt kaydedilemedi (${error.message}). "Yanıtı gönder" ile tekrar deneyin.`;
+    $("error").hidden = false;
+    $("next").disabled = false;
+    return;
+  }
+  state.answered += 1;
+  state.index += 1;
+  if (state.index >= state.trials.length) {
+    $("test").hidden = true;
+    $("bar").style.width = "100%";
+    $("done").hidden = false;
+    $("doneText").textContent = `${state.answered} deneme tamamlandı. Katkınız için teşekkürler.`;
+    return;
+  }
+  loadTrial();
+}
+
+$("start").addEventListener("click", async () => {
+  $("intro").hidden = true;
+  $("test").hidden = false;
+  await boot();
+  loadTrial();
+});
+$("prefA").addEventListener("click", () => choosePreference("a", $("prefA")));
+$("prefB").addEventListener("click", () => choosePreference("b", $("prefB")));
+$("prefTie").addEventListener("click", () => choosePreference("tie", $("prefTie")));
+$("humanA").addEventListener("click", () => chooseHuman("a", $("humanA")));
+$("humanB").addEventListener("click", () => chooseHuman("b", $("humanB")));
+$("humanNone").addEventListener("click", () => chooseHuman("none", $("humanNone")));
+for (const button of $("stars").querySelectorAll("button")) {
+  button.addEventListener("click", () => {
+    state.confidence = Number(button.dataset.v);
+    for (const other of $("stars").querySelectorAll("button")) other.classList.remove("chosen");
+    button.classList.add("chosen");
+  });
+}
+$("next").addEventListener("click", submit);
+
+document.addEventListener("keydown", event => {
+  if ($("test").hidden || $("second").hidden) return;
+  const map = { "1": "humanA", "2": "humanB", "3": "humanNone" };
+  if (map[event.key]) $(map[event.key]).click();
+  if (event.key === "Enter") $("next").click();
+});
+</script>
+</html>

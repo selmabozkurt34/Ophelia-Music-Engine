@@ -320,7 +320,7 @@ Bu cümlenin üç ayağı var ve üçü de mevcut kodun üstüne oturuyor:
 | Öncelik | Adım | Gerekçe | Ölçüt |
 | --- | --- | --- | --- |
 | **P0** | ~~MusicXML dışa aktarım~~ **(yapıldı)** | notasyon pazarına giriş bileti; en ucuz kaldıraç | MuseScore'da açılıp çalınabilen .musicxml |
-| **P0** | Kör A/B testi (gerçek koral vs üretim, 20+ dinleyici) | hiç ölçmediğimiz tek kritik boyut | tercih oranı + güven aralığı |
+| **P0** | ~~Kör A/B altyapısı~~ **(yapıldı)** · 20+ dinleyici toplanıyor | hiç ölçmediğimiz tek kritik boyut | tercih oranı + güven aralığı |
 | **P1** | 8. aşama: SoundFont + LUFS + reverb/kompresör | "dinlenebilir"den "sunulabilir"e | −14 LUFS, true peak ≤ −1 dBTP |
 | **P1** | PDMX `no_license_conflict` (6.250 saat) | veri farkını 1.370×'e indirir; lisans temiz kalır | yeni stil çeşitliliği + val kaybı |
 | **P2** | Bağlam 1024 + form planlayıcı | eser düzeyinde tutarlılık | 60+ sn yapısal tekrar tespiti |
@@ -443,8 +443,9 @@ kullanılmalı.
    bulunamadı**; MEB ve güzel sanatlar lisesi rakamları PDF/JS panel kaynaklı,
    birincil sayfadan tam metin olarak doğrulanamadı.
 5. **eita, Muzica, Velorafy, Hurrian AI için yatırım tutarları açıklanmamış.**
-6. **Kör A/B testi yapılmadı** — bu raporun en büyük kendi ölçüm boşluğu ve
-   §7.3'te P0 olarak işaretlendi.
+6. **Kör A/B testi**: altyapı kuruldu (§7.3 P0, `docs/kor_ab_testi.md`) ama
+   **dinleyici verisi henüz yetersiz** — ilk oturum 6 deneme × 1 dinleyici.
+   Rapordaki "dinleyici ayırt edemiyor" iddiası hâlâ doğrulanmış değil.
 
 ---
 

@@ -725,6 +725,268 @@ def notation_export(
     console.print(f"  çıktı            : {path}")
 
 
+abtest_app = typer.Typer(
+    no_args_is_help=True,
+    help="Kör A/B dinleme testi: gerçek koral ↔ model üretimi (tercih + güven aralığı).",
+)
+app.add_typer(abtest_app, name="abtest")
+
+
+def _latest_session(directory: Path | None) -> Path:
+    """Verilen klasörü ya da en yeni test oturumunu döndürür."""
+    from ophelia.core.paths import ABTEST_OUT_DIR
+
+    if directory is not None:
+        return directory
+    candidates = sorted(ABTEST_OUT_DIR.glob("*/key.json"))
+    if not candidates:
+        console.print("[red]Oturum yok.[/red] Önce: ophelia abtest build")
+        raise typer.Exit(code=1)
+    return candidates[-1].parent
+
+
+def _pool(path: Path | None, fallback: object) -> list[Path]:
+    """Verilen klasör/dosyayı havuza çevirir; verilmezse varsayılan havuz."""
+    if path is None:
+        return list(fallback)  # type: ignore[call-overload]
+    if path.is_dir():
+        return sorted(path.glob("*.mid"))
+    return [path]
+
+
+@abtest_app.command("build")
+def abtest_build(
+    trials: Annotated[int, typer.Option("--trials", "-n", help="Deneme (çift) sayısı")] = 10,
+    seconds: Annotated[float, typer.Option("--seconds", "-s", help="Her kaydın süresi")] = 20.0,
+    seed: Annotated[int, typer.Option("--seed")] = 0,
+    real: Annotated[
+        Path | None, typer.Option("--real", help="Gerçek MIDI klasörü (varsayılan: test bölütü)")
+    ] = None,
+    generated: Annotated[
+        Path | None, typer.Option("--generated", "-g", help="Üretilmiş MIDI klasörü")
+    ] = None,
+    out: Annotated[Path | None, typer.Option("--out", "-o")] = None,
+    title: Annotated[str, typer.Option("--title")] = "Ophelia kör A/B dinleme testi",
+) -> None:
+    """Kör test oturumu kurar: sesleri üretir, etiket anahtarını diske yazar."""
+    from datetime import datetime
+
+    from ophelia.core.paths import ABTEST_OUT_DIR, PROJECT_ROOT
+    from ophelia.eval import (
+        AbTestError,
+        build_session,
+        default_generated_pool,
+        default_real_pool,
+        required_votes,
+    )
+
+    real_pool = _pool(real, default_real_pool(PROJECT_ROOT))
+    generated_pool = _pool(generated, default_generated_pool(PROJECT_ROOT))
+    target = out or ABTEST_OUT_DIR / datetime.now().strftime("oturum-%Y%m%d-%H%M%S")
+
+    try:
+        session = build_session(
+            real_pool,
+            generated_pool,
+            target,
+            trials=trials,
+            seconds=seconds,
+            seed=seed,
+            title=title,
+        )
+    except (AbTestError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    console.rule("[bold]Kör test[/bold]")
+    console.print(
+        f"  deneme        : {len(session.trials)} × 2 kayıt · {session.seconds:.0f} sn · "
+        f"{session.audio_dir}"
+    )
+    console.print(f"  gerçek havuz  : {len(real_pool)} dosya (test bölütü — eğitimde görülmedi)")
+    console.print(f"  üretim havuzu : {len(generated_pool)} dosya")
+    console.print(f"  etiket anahtarı: {session.directory / 'key.json'} [yellow](dinleyiciye gitmez)[/yellow]")
+    console.print(f"  sıradaki      : ophelia abtest serve --dir {session.directory}")
+    console.print(
+        f"  örneklem      : ±10 puan kesinlik için ~{required_votes(0.1)} kararlı oy gerekir"
+    )
+
+
+@abtest_app.command("serve")
+def abtest_serve(
+    directory: Annotated[Path | None, typer.Option("--dir", "-d", help="Oturum klasörü")] = None,
+    port: Annotated[int, typer.Option("--port", "-p")] = 8800,
+    browser: Annotated[bool, typer.Option("--open/--no-open")] = True,
+    lan: Annotated[
+        bool,
+        typer.Option(
+            "--lan/--local",
+            help="Yerel ağa aç: aynı ağdaki başka bilgisayarlardan dinlenebilsin",
+        ),
+    ] = False,
+    host: Annotated[
+        str,
+        typer.Option("--host", help="Bağlanılacak adres (varsayılan 127.0.0.1)"),
+    ] = "127.0.0.1",
+) -> None:
+    """Dinleyici sayfasını açar ve oyları kaydeder.
+
+    Varsayılan olarak yalnızca bu bilgisayardan erişilir. Dört-beş kişi kendi
+    bilgisayarından dinleyecekse `--lan` kullanın; adres ekrana yazılır.
+    """
+    from ophelia.eval import AbTestError, load_session, serve
+
+    bind = "0.0.0.0" if lan else host
+
+    target = _latest_session(directory)
+    try:
+        session = load_session(target)
+    except AbTestError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    try:
+        serve(session.directory, host=bind, port=port, open_browser=browser)
+    except OSError as exc:
+        console.print(f"[red]Sunucu açılamadı:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+
+def _pct(value: float | None) -> str:
+    return "—" if value is None else f"{value * 100:.1f}%"
+
+
+def _ci(interval: tuple[float, float] | None) -> str:
+    if interval is None:
+        return "—"
+    low, high = interval
+    return f"%95 GA {low * 100:.1f}–{high * 100:.1f}%"
+
+
+@abtest_app.command("score")
+def abtest_score(
+    sources: Annotated[
+        list[Path] | None,
+        typer.Argument(help="Oy dosyaları ya da klasörleri (varsayılan: oturumun oyları)"),
+    ] = None,
+    directory: Annotated[Path | None, typer.Option("--dir", "-d", help="Oturum klasörü")] = None,
+    json_out: Annotated[Path | None, typer.Option("--json", help="Raporu JSON olarak yaz")] = None,
+) -> None:
+    """Oyları etiket anahtarıyla birleştirip tercih oranını ve güven aralığını verir."""
+    from ophelia.eval import AbTestError, load_session, load_votes, summarize
+
+    target = _latest_session(directory)
+    try:
+        session = load_session(target)
+    except AbTestError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    paths = list(sources) if sources else [session.votes_path]
+    try:
+        votes, broken = load_votes(paths)
+    except AbTestError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    if not votes:
+        console.print(
+            "[yellow]Hiç oy yok.[/yellow] Önce dinleyicilerin teste girmesi gerek: "
+            f"ophelia abtest serve --dir {session.directory}"
+        )
+        raise typer.Exit(code=1)
+
+    report = summarize(session, votes, broken_lines=broken)
+    console.rule("[bold]Sonuç[/bold]")
+    console.print(f"  oturum         : {session.session_id} · {len(session.trials)} deneme")
+    console.print(f"  oy · dinleyici : {report.votes} · {len(report.listeners)}")
+    console.print(
+        f"  tercih         : gerçek {report.real_choice} · üretim {report.generated_choice} · "
+        f"eşit {report.ties}"
+    )
+    console.print(f"  gerçek oranı   : {_pct(report.rate_real)} · {_ci(report.ci)}")
+    console.print(
+        "  p-değeri       : " + ("—" if report.p_value is None else f"{report.p_value:.4f}")
+    )
+    console.print(
+        f"  tanıma         : {report.identification_correct}/{report.identification_n} = "
+        f"{_pct(report.identification_rate)} · {_ci(report.identification_ci)}"
+    )
+    if report.mean_confidence is not None:
+        console.print(f"  güven (1-5)    : {report.mean_confidence:.2f}")
+    if report.mean_seconds is not None:
+        console.print(f"  karar süresi   : {report.mean_seconds:.1f} sn")
+    if report.duplicate_votes:
+        console.print(
+            f"  [yellow]yinelenen oy : {report.duplicate_votes} (aynı dinleyici, aynı deneme —"
+            " ilki sayıldı)[/yellow]"
+        )
+    if broken:
+        console.print(f"  [yellow]bozuk satır : {broken}[/yellow]")
+    console.print(f"  [bold]yorum[/bold]          : {report.verdict}")
+    console.print(f"  tanıma yorumu  : {report.identification_verdict()}")
+
+    trials = Table(title="Deneme bazında", title_justify="left")
+    trials.add_column("Deneme", style="cyan", no_wrap=True)
+    trials.add_column("Oy", justify="right")
+    trials.add_column("Gerçek", justify="right")
+    trials.add_column("Üretim", justify="right")
+    trials.add_column("Eşit", justify="right")
+    trials.add_column("Doğru tanıma", justify="right")
+    for item in report.per_trial:
+        trials.add_row(
+            item.trial_id,
+            str(item.votes),
+            str(item.real_choice),
+            str(item.generated_choice),
+            str(item.ties),
+            f"{item.correct_guesses}/{item.guesses}",
+        )
+    console.print(trials)
+
+    listeners = Table(title="Dinleyici bazında", title_justify="left")
+    listeners.add_column("Dinleyici", style="cyan", no_wrap=True)
+    listeners.add_column("Oy", justify="right")
+    listeners.add_column("Gerçek tercihi", justify="right")
+    listeners.add_column("Doğru tanıma", justify="right")
+    for item in report.listeners:
+        listeners.add_row(
+            item.listener,
+            str(item.votes),
+            _pct(item.rate),
+            str(item.correct_guesses),
+        )
+    console.print(listeners)
+
+    if json_out is not None:
+        payload = {
+            "session": session.session_id,
+            "trials": len(session.trials),
+            "votes": report.votes,
+            "listeners": len(report.listeners),
+            "real_choice": report.real_choice,
+            "generated_choice": report.generated_choice,
+            "ties": report.ties,
+            "rate_real": report.rate_real,
+            "ci95": report.ci,
+            "p_value": report.p_value,
+            "identification": {
+                "n": report.identification_n,
+                "correct": report.identification_correct,
+                "rate": report.identification_rate,
+                "ci95": report.identification_ci,
+                "p_value": report.identification_p,
+            },
+            "mean_confidence": report.mean_confidence,
+            "mean_seconds": report.mean_seconds,
+            "verdict": report.verdict,
+            "identification_verdict": report.identification_verdict(),
+            "per_trial": [vars(item) for item in report.per_trial],
+            "per_listener": [vars(item) for item in report.listeners],
+        }
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        console.print(f"  JSON           : {json_out}")
+
+
 @app.command("compose")
 def compose_command(
     command: Annotated[str, typer.Argument(help="Doğal dil isteği, örn. 'hüzünlü la minör 30 sn'")],

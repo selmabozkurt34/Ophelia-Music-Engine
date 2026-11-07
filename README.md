@@ -238,4 +238,20 @@ ophelia notation export eser.mid --title "Deneme 1"
 | Sadakat | geri okunduğunda perde · başlangıç · süre **birebir** (bağlar çözülerek doğrulandı) |
 | Sınır | nota başına velocity taşınamaz; ortalama velocity tek `<sound dynamics>` olarak yazılır |
 
-Gerekçe ve notasyon pazarı: [docs/piyasa_analizi.md](docs/piyasa_analizi.md)..
+Gerekçe ve notasyon pazarı: [docs/piyasa_analizi.md](docs/piyasa_analizi.md).
+
+## Kör A/B dinleme testi
+
+Modelin gerçek korallerle kıyaslanması: aynı sentez hattından geçen iki kayıt kör
+olarak sunulur, dinleyici hangisini beğendiğini ve hangisinin insan olduğunu söyler.
+Tercih oranı %95 Wilson aralığı ve kesin binom p-değeri ile raporlanır.
+
+```bash
+ophelia abtest build -n 10 --seconds 20        # gerçek: test bölütü, üretim: outputs/midi
+ophelia abtest serve --dir outputs/abtest/<oturum> --lan   # yerel ağdaki dinleyiciler
+ophelia abtest score                           # tercih oranı + güven aralığı
+```
+
+Aynı bilgisayarda ikinci dinleyici için adrese `?yeni=1` eklenir; bir dinleyicinin aynı
+denemeye ikinci oyu sayılmaz. Protokol, örneklem tablosu ve konfoundlar
+([docs/kor_ab_testi.md](docs/kor_ab_testi.md)).

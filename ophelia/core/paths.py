@@ -30,6 +30,8 @@ MIDI_OUT_DIR: Path = OUTPUTS_DIR / "midi"
 WAV_OUT_DIR: Path = OUTPUTS_DIR / "wav"
 # Notasyon çıktısı: MusicXML dosyaları (düzenlenebilir nota).
 SCORE_OUT_DIR: Path = OUTPUTS_DIR / "scores"
+# Kör A/B dinleme testi oturumları (sesler, etiket anahtarı, oylar).
+ABTEST_OUT_DIR: Path = OUTPUTS_DIR / "abtest"
 
 DEFAULT_CONFIG_FILE: Path = CONFIG_DIR / "default.yaml"
 
@@ -48,6 +50,7 @@ def ensure_dirs() -> None:
         MIDI_OUT_DIR,
         WAV_OUT_DIR,
         SCORE_OUT_DIR,
+        ABTEST_OUT_DIR,
         LOGS_DIR,
     ):
         directory.mkdir(parents=True, exist_ok=True)
