@@ -32,6 +32,10 @@ TAIL_SECONDS = 0.35
 LEGATO_GAP = 0.35
 #: Legato örtüşmesi: iki nota bir an birlikte tınlar, yay değişimi gibi.
 LEGATO_OVERLAP = 0.09
+#: İnsanlaştırma: notalar tam ızgaraya değil, ±bu kadar kayarak girer.
+HUMANIZE_SECONDS = 0.012
+#: Güçlü vuruşta hafif vurgu (koral cümlelemesi).
+ACCENT = 1.05
 
 
 @dataclass(frozen=True)
@@ -46,6 +50,7 @@ class MixSettings:
     target_lufs: float | None = TARGET_LUFS
     ceiling_db: float = CEILING_DB
     legato: bool = True
+    humanize: bool = True
 
 
 def _frequency(pitch: int) -> float:
@@ -57,6 +62,12 @@ def _note_seed(note: NoteEvent) -> int:
     return int(note.pitch * 7919 + note.start * 31 + note.duration)
 
 
+def _humanize(note: NoteEvent) -> float:
+    """Notanın giriş gecikmesi (sn); tohumlu, yani çıktı yine tekrarlanabilir."""
+    rng = np.random.default_rng(_note_seed(note) + 1)
+    return float(rng.uniform(-HUMANIZE_SECONDS, HUMANIZE_SECONDS))
+
+
 def synthesize_part(
     part: Part,
     *,
@@ -64,6 +75,7 @@ def synthesize_part(
     ticks_per_second: float,
     sample_rate: int = SAMPLE_RATE,
     legato: bool = True,
+    humanize: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Bir parçayı stereo dalga formuna çevirir (sol, sağ).
 
@@ -98,8 +110,10 @@ def synthesize_part(
         envelope = timbre.amplitude_envelope(
             held, buffer_seconds, voice=voice, sample_rate=sample_rate
         )
-        gain = (note.velocity / 127.0) ** 1.4 * 0.22
-        start = int(note.start / ticks_per_second * sample_rate)
+        accent = ACCENT if note.start % 480 == 0 else 1.0
+        gain = (note.velocity / 127.0) ** 1.4 * 0.22 * accent
+        offset = _humanize(note) if humanize else 0.0
+        start = max(0, int((note.start / ticks_per_second + offset) * sample_rate))
         rendered.append((start, (signal * envelope * gain).astype(np.float32)))
 
     length = max([total, *(start + wave.size for start, wave in rendered)])
@@ -137,6 +151,7 @@ def _render(
             ticks_per_second=ticks_per_second,
             sample_rate=settings.sample_rate,
             legato=settings.legato,
+            humanize=settings.humanize,
         )
         for part in parts
     ]

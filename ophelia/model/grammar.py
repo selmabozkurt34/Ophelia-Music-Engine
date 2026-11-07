@@ -42,14 +42,35 @@ CHANNEL = "CHANNEL"
 class TokenGrammar:
     """Sözlüğe bağlı dilbilgisi; durum geçişleri ve izin maskeleri."""
 
-    def __init__(self, vocabulary: Vocabulary) -> None:
+    def __init__(
+        self,
+        vocabulary: Vocabulary,
+        *,
+        min_duration_steps: int = 0,
+        time_step_steps: int = 0,
+    ) -> None:
         self.vocabulary = vocabulary
         self._by_kind = _ids_by_kind(vocabulary)
         self._masks: dict[tuple[str, tuple[int, ...]], torch.Tensor] = {}
+        # Ritim politikası: ızgara birimi (1 = 16'lık). 0 = kısıtsız.
+        self.min_duration_steps = max(0, min_duration_steps)
+        self.time_step_steps = max(0, time_step_steps)
 
     # --- kimlik kümeleri ----------------------------------------------------
     def ids_of(self, kind: str) -> set[int]:
-        return self._by_kind.get(kind, set())
+        """Türün izinli kimlikleri (ritim politikası uygulanmış)."""
+        ids = self._by_kind.get(kind, set())
+        if kind == "DURATION" and self.min_duration_steps:
+            return {i for i in ids if self._value_of(i) >= self.min_duration_steps}
+        if kind == "TIME" and self.time_step_steps:
+            return {i for i in ids if self._value_of(i) % self.time_step_steps == 0}
+        return ids
+
+    def _value_of(self, token_id: int) -> int:
+        """``DURATION_4`` → 4; sayı yoksa 0."""
+        token = self.vocabulary.token_of(token_id)
+        _, _, raw = token.partition("_")
+        return int(raw) if raw.isdigit() else 0
 
     def _union(self, *kinds: str) -> list[int]:
         collected: set[int] = set()
@@ -147,6 +168,12 @@ def _ids_by_kind(vocabulary: Vocabulary) -> dict[str, set[int]]:
     return groups
 
 
-def grammar_for(vocabulary: Vocabulary) -> TokenGrammar:
-    """Sözlükten dilbilgisi kurar."""
-    return TokenGrammar(vocabulary)
+def grammar_for(
+    vocabulary: Vocabulary, *, min_duration_steps: int = 0, time_step_steps: int = 0
+) -> TokenGrammar:
+    """Sözlükten dilbilgisi kurar (isteğe bağlı ritim politikasıyla)."""
+    return TokenGrammar(
+        vocabulary,
+        min_duration_steps=min_duration_steps,
+        time_step_steps=time_step_steps,
+    )

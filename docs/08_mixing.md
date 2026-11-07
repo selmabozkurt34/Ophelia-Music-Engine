@@ -90,7 +90,45 @@ taraf da eşit yükseklikte.
 5. **Kulakla doğrulanmadı.** Yukarıdaki tablo ölçümdür; "artık koral gibi
    duyuluyor" iddiası dinleyici testiyle sınanmalı (bkz. `docs/kor_ab_testi.md`).
 
-## 5. Dosya dışa aktarımı
+## 5. İkinci tur — sorun tını değil, ritim çıktı
+
+Salon ve yeni tını eklendikten sonra geri bildirim aynı kaldı: "hâlâ oyun
+müziği gibi". Bu kez ölçtüm: gerçek Bach koralleri ile model çıktısı aynı
+yöntemle çıkarıldı.
+
+| Ölçüt | Gerçek koraller (8) | Model v1 (15) | Model v2 (6) |
+| --- | --- | --- | --- |
+| 16'lık nota oranı | **%3** | **%30** | **%0** |
+| Güçlü vuruşta başlayan nota | **%78** | **%18** | %49 |
+| Ortalama eşzamanlı ses | 2,52 | 2,25 | 2,63 |
+| Nota/saniye | 8,39 | 5,42 | 4,90 |
+
+Yani model, koral dokusunu 16'lık notalarla ve zayıf vuruşlarda örüyordu —
+kulağa "riff/arpej" gibi gelen şey buydu; sentez bunu yalnızca parlatıyordu.
+
+### Yapılan düzeltmeler
+
+1. **Ritim politikası (üretimde).** `SampleConfig.min_duration_steps=2` ve
+   `time_step_steps=2`: dilbilgisi artık 16'lık `DURATION` ve 8'lik ızgaraya
+   oturmayan `TIME` token'larını üretemez (`ophelia/model/grammar.py`). Model
+   kısıtlanmıyor, yalnızca dilbilgisi dışına çıkamıyor.
+2. **Metrik düzeltme (üretim sonrası).** `ophelia/nlp/metrify.py`: başlangıçlar
+   8'lik ızgaraya yuvarlanır, aynı perdede çakışanlar tekilleştirilir ve
+   `limit_polyphony`'nin bıraktığı 1 ızgaralık kırıntılar düşürülür.
+3. **İnsanlaştırma.** Notalar ±12 ms kayarak girer, güçlü vuruşta +%5 vurgu;
+   tohum sabit olduğu için çıktı yine tekrarlanabilir.
+4. **"Yaylılar" artık bölüm.** Komutta "yaylılar" dendiğinde tek bir pad
+   yerine keman/viyola/çello/kontrbas ayrı ayrı çalıyor — tek tınıya düşen 111
+   nota, "oyun müziği" hissinin diğer yarısıydı.
+
+### Kalan fark (dürüst)
+
+Güçlü vuruş oranı %49'da kaldı (gerçek: %78) ve model hâlâ gerçek korallerden
+~%40 daha seyrek. Bu, **çözümleme** kısıtıyla kapanmaz; eğitim verisinin ritmik
+çeşitliliği ve model kapasitesiyle ilgili. Sonraki adım: ritim ağırlıklı veri
+(PDMX) ve daha büyük model.
+
+## 6. Dosya dışa aktarımı
 
 MP3/FLAC ve metadata bu aşamanın **son** adımı; henüz yok. Şimdilik çıktı 44,1 kHz
 16-bit stereo WAV.

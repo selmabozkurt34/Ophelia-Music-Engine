@@ -301,6 +301,14 @@ def _parse_polyphony(words: list[str]) -> tuple[int | None, str | None]:
     return None, None
 
 
+#: Topluluk adları tek bir pad sesi değil **bölüm** demektir: "yaylılar"
+#: dendiğinde dört yaylı sesi ayrı ayrı çalar. Tek bir pad'e düşen notalar
+#: "oyun müziği" gibi duyuluyordu (tek tını, bölüm ayrımı yok).
+_SECTIONS: dict[str, tuple[str, ...]] = {
+    "strings": ("violin", "viola", "cello", "contrabass"),
+}
+
+
 def _parse_ensemble(words: list[str]) -> tuple[tuple[str, ...], str | None]:
     """Cümledeki enstrümanları sırayla toplar (tizden pese kullanılacak)."""
     found: list[str] = []
@@ -309,8 +317,9 @@ def _parse_ensemble(words: list[str]) -> tuple[tuple[str, ...], str | None]:
         if not re.search(rf"\b{re.escape(phrase)}\b", text):
             continue
         slug = _INSTRUMENT_WORDS[phrase]
-        if slug not in found:
-            found.append(slug)
+        for member in _SECTIONS.get(slug, (slug,)):
+            if member not in found:
+                found.append(member)
 
     if not found:
         return (), None

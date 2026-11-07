@@ -278,6 +278,7 @@ ophelia audio render eser.mid --reverb 0 --no-master    # kuru miks (7. aşama)
 | Tını | 12 harmonik + chorus + gecikmeli vibrato + sustain'lı ADSR |
 | Legato | ≤350 ms boşlukta 90 ms örtüşme; bırakma kuyruğu süreyi aşar |
 | Mekân | sentetik salon impuls yanıtı, 2,2 sn, stereo, tohum sabit |
+| Ritim | 16'lık yasak (en kısa 8'lik), başlangıçlar 8'lik ızgarada, ±12 ms insanlaştırma |
 
 Ölçüm ve sınırlar: [docs/08_mixing.md](docs/08_mixing.md).
 

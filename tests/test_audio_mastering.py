@@ -188,3 +188,15 @@ def test_render_is_deterministic_with_new_chain() -> None:
     first = render_parts(_parts(), tempo_bpm=100.0)
     second = render_parts(_parts(), tempo_bpm=100.0)
     assert np.array_equal(first, second)
+
+
+def test_humanization_shifts_onsets_but_stays_reproducible() -> None:
+    part = Part(instrument=get("violin"), notes=[_note(0, 69)], pan=0.0)
+    straight = synthesize_part(part, seconds=1.0, ticks_per_second=800.0, humanize=False)[0]
+    shifted = synthesize_part(part, seconds=1.0, ticks_per_second=800.0, humanize=True)[0]
+    again = synthesize_part(part, seconds=1.0, ticks_per_second=800.0, humanize=True)[0]
+
+    assert np.array_equal(shifted, again)  # tohumlu: aynı giriş aynı çıktı
+    assert not np.array_equal(straight, shifted)
+    first_sound = int(np.argmax(np.abs(shifted) > 1e-4))
+    assert first_sound <= int(0.02 * SAMPLE_RATE)  # kayma 20 ms'yi aşmıyor

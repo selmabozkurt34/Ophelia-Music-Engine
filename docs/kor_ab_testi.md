@@ -104,9 +104,15 @@ Kurulumda uygulanan kurallar (hepsi testli):
 Ölçülen ilk oturum (6 deneme, 1 dinleyici, 6 geçerli oy): tercih %33,3 (GA 9,7–70,0,
 p = 0,69), tanıma 2/5. Yani henüz iki yönde de iddia yok.
 
-**Sürüm uyarısı:** ses karakteri 8. aşamada değişti (salon + −14 LUFS + yeni tını).
-Farklı zincirlerle üretilmiş oturumların oyları birleştirilmemeli; her tur kendi
-zinciriyle yeniden kurulmalı.
+**Sürüm uyarısı:** ses karakteri 8. aşamada değişti (salon + −14 LUFS + yeni tını)
+ve ardından üretim tarafına ritim politikası eklendi (16'lık kısıtı + metrik
+düzeltme). Farklı sürümlerle kurulmuş oturumların oyları birleştirilmemeli:
+
+| Oturum | Ne içeriyor |
+| --- | --- |
+| `abtest/demo` | 7. aşama sesi (tepe normalizasyonu, 16'lık ritim) — arşiv |
+| `abtest/tur-2` | 8. aşama sesi, ritim kısıtsız — arşiv |
+| `abtest/tur-3` | **güncel**: salon + −14 LUFS + 8'lik ritim kısıtı |
 
 ## 8. Dosyalar
 

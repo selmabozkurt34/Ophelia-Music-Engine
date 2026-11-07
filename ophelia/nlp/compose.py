@@ -32,6 +32,7 @@ from ophelia.nlp.arrange import (
     project_to_scale,
     transpose_to_key,
 )
+from ophelia.nlp.metrify import metrify
 from ophelia.nlp.parse import parse_command
 from ophelia.nlp.seeding import seed_notes
 from ophelia.nlp.spec import CompositionSpec
@@ -145,8 +146,16 @@ def compose(
     top_k: int = 40,
     spec: CompositionSpec | None = None,
     device: str = "cpu",
+    min_duration_steps: int = 2,
+    time_step_steps: int = 2,
 ) -> ComposeResult:
-    """Komutu çözer, eseri üretir, isteğe oturtur ve MIDI yazar."""
+    """Komutu çözer, eseri üretir, isteğe oturtur ve MIDI yazar.
+
+    ``min_duration_steps`` / ``time_step_steps`` ızgara birimidir (1 = 16'lık):
+    varsayılan 2, yani en kısa nota 8'lik ve vuruşlar 8'lik ızgarada. Gerçek
+    korallerde notaların %3'ü 16'lıktır; kısıtsız model %30 üretiyor ve bu,
+    "oyun müziği" etkisinin başlıca sebebiydi.
+    """
     request = spec or parse_command(command, seed=seed)
 
     sample = SampleConfig(
@@ -157,6 +166,8 @@ def compose(
         max_polyphony=request.max_polyphony,
         min_notes=min_notes_for(request.duration_seconds),
         constrained=True,
+        min_duration_steps=min_duration_steps,
+        time_step_steps=time_step_steps,
     )
 
     raw_tokens, stopped, passes = generate_until(
@@ -170,6 +181,13 @@ def compose(
         projected, request.duration_seconds, tempo_bpm=request.tempo_bpm
     )
     final = limit_polyphony(clipped, request.max_polyphony)
+    if min_duration_steps or time_step_steps:
+        grid = tokenizer.config.grid_ticks * max(1, time_step_steps)
+        final = metrify(
+            final,
+            grid=grid,
+            min_duration=tokenizer.config.grid_ticks * max(1, min_duration_steps),
+        )
     report = replace(
         report,
         notes_before=report.notes_before or len(notes),

@@ -166,10 +166,20 @@ class SampleConfig:
     # EOS bu kadar nota üretilmeden yasak: birkaç notalık kırıntılar engellenir.
     # (Gerçek koraller 200-430 nota; 120 ≈ 30 sn'lik asgari bir eser.)
     min_notes: int = 120
+    # Ritim politikası (ızgarada 1 = 16'lık). 0 = kısıtsız.
+    # Gerçek korallerde notaların yalnızca %3'ü 16'lık ve başlangıçların %78'i
+    # güçlü vuruşta; model 16'lık üretmeye bırakıldığında %30'a çıkıyor ve
+    # sonuç "oyun müziği" gibi duyuluyor (bkz. docs/08_mixing.md).
+    min_duration_steps: int = 0
+    time_step_steps: int = 0
 
     def __post_init__(self) -> None:
         if self.min_notes < 1:
             raise ValueError("min_notes en az 1 olmalı")
+        if self.min_duration_steps < 0:
+            raise ValueError("min_duration_steps negatif olamaz")
+        if self.time_step_steps < 0:
+            raise ValueError("time_step_steps negatif olamaz")
         if self.max_new_tokens <= 0:
             raise ValueError("max_new_tokens pozitif olmalı")
         if self.temperature <= 0:
@@ -186,4 +196,6 @@ class SampleConfig:
             "max_polyphony": self.max_polyphony,
             "constrained": self.constrained,
             "min_notes": self.min_notes,
+            "min_duration_steps": self.min_duration_steps,
+            "time_step_steps": self.time_step_steps,
         }

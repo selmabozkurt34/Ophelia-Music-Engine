@@ -135,7 +135,11 @@ def generate_tokens(
 
     allowed = None
     if config.constrained:
-        grammar = grammar_for(tokenizer.vocabulary)
+        grammar = grammar_for(
+            tokenizer.vocabulary,
+            min_duration_steps=config.min_duration_steps,
+            time_step_steps=config.time_step_steps,
+        )
         min_notes = config.min_notes
         allowed = lambda generated: grammar.mask_for(  # noqa: E731
             seed_state + generated, min_notes=min_notes
